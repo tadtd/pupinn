@@ -6,10 +6,12 @@ import {
   CalendarDays,
   Home,
   LogOut,
+  LogIn,
   NotebookPen,
   Users,
   BedDouble,
   Shield,
+  PawPrint,
 } from "lucide-react";
 
 import {
@@ -48,7 +50,7 @@ const NAVIGATION = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isAuthenticated } = useAuth();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -57,7 +59,9 @@ export function AppSidebar() {
       <SidebarHeader className="border-transparent px-4 pt-6 pb-4">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
-            <span className="text-sm font-semibold">P</span>
+            <span className="text-sm font-semibold">
+              <PawPrint className="h-4 w-4" />
+            </span>
           </div>
           {!isCollapsed && (
             <div>
@@ -80,28 +84,36 @@ export function AppSidebar() {
               </SidebarGroupLabel>
             )}
             <SidebarMenu>
-              {section.items.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                    className={cn(isCollapsed ? "px-2 justify-center" : "px-3")}
-                  >
-                    <Link
-                      href={item.href}
-                      className="flex items-center gap-2"
-                      title={isCollapsed ? item.title : undefined}
-                    >
-                      <item.icon className="h-4 w-4 text-amber-300" />
-                      {!isCollapsed && (
-                        <span className="font-medium text-slate-100">
-                          {item.title}
-                        </span>
+              {section.items
+                .filter((item) =>
+                  // Receptionists should not see "Create Room" in the sidebar
+                  item.title === "Create Room" ? isAdmin : true
+                )
+                .map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                      className={cn(
+                        "group/sidebar-item transition-colors",
+                        isCollapsed ? "px-2 justify-center" : "px-3"
                       )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    >
+                      <Link
+                        href={item.href}
+                        className="flex items-center gap-2"
+                        title={isCollapsed ? item.title : undefined}
+                      >
+                        <item.icon className="h-4 w-4 text-amber-300 transition-transform duration-150 group-hover/sidebar-item:scale-110 group-hover/sidebar-item:text-amber-200" />
+                        {!isCollapsed && (
+                          <span className="font-medium text-slate-100 transition-colors duration-150 group-hover/sidebar-item:text-slate-50">
+                            {item.title}
+                          </span>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroup>
         ))}
@@ -133,47 +145,86 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter className="border-transparent">
-        {isCollapsed ? (
-          <div className="flex justify-center">
-            <Button
-              onClick={logout}
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20 cursor-pointer"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white">
-            <div className="flex items-center gap-3">
-              <Users className="h-9 w-9 rounded-full bg-slate-900/80 p-2 text-amber-300" />
-              <div>
-                <p className="font-semibold">
-                  {user?.username ?? "Team Member"}
-                </p>
-                <p className="text-xs text-slate-400 flex items-center gap-1">
-                  {isAdmin ? (
-                    <>
-                      <Shield className="h-3 w-3" /> Admin
-                    </>
-                  ) : (
-                    "Reception"
-                  )}
-                </p>
+        {isAuthenticated ? (
+          <>
+            {isCollapsed ? (
+              <div className="flex justify-center">
+                <Button
+                  onClick={logout}
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full border border-white/10 bg-white/10 text-white hover:bg-white/20 cursor-pointer"
+                  title="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
-            </div>
-            <Button
-              onClick={logout}
-              variant="ghost"
-              size="sm"
-              className="mt-3 w-full justify-center gap-2 border border-white/10 bg-white/5 text-white hover:bg-white/10 cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign out</span>
-            </Button>
-          </div>
+            ) : (
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white">
+                <div className="flex items-center gap-3">
+                  <Users className="h-9 w-9 rounded-full bg-slate-900/80 p-2 text-amber-300" />
+                  <div>
+                    <p className="font-semibold">
+                      {user?.username ?? "Team Member"}
+                    </p>
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      {isAdmin ? (
+                        <>
+                          <Shield className="h-3 w-3" /> Admin
+                        </>
+                      ) : (
+                        "Receptionist"
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={logout}
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full justify-center gap-2 border border-white/10 bg-white/5 text-white hover:bg-white/10 cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign out</span>
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {isCollapsed ? (
+              <div className="flex justify-center">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 cursor-pointer"
+                  title="Sign in"
+                >
+                  <Link href="/login">
+                    <LogIn className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-50">
+                <p className="font-semibold mb-1">Not signed in</p>
+                <p className="text-xs text-amber-100/80 mb-3">
+                  Sign in to manage bookings and rooms.
+                </p>
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-full justify-center gap-2 bg-amber-500 text-slate-900 hover:bg-amber-400 cursor-pointer"
+                >
+                  <Link href="/login">
+                    <LogIn className="h-4 w-4" />
+                    <span>Sign in</span>
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </SidebarFooter>
     </Sidebar>

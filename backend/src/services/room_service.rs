@@ -119,6 +119,14 @@ impl RoomService {
 
         // Validate status transition if status is being changed
         if let Some(new_status) = status {
+            // Business rule: Occupied -> Available must go through the check-out flow,
+            // not a direct room edit.
+            if current.status == RoomStatus::Occupied && new_status == RoomStatus::Available {
+                return Err(AppError::InvalidStatusTransition(
+                    "Occupied rooms can only be set to available via guest check-out.".into(),
+                ));
+            }
+
             if !current.status.can_transition_to(new_status) {
                 return Err(AppError::InvalidStatusTransition(format!(
                     "Cannot transition room from {:?} to {:?}",
@@ -136,8 +144,31 @@ impl RoomService {
     }
 
     /// Update room status (internal use for check-in/out)
+    ///
+    /// This bypasses the UI restriction that prevents editing an occupied room
+    /// directly to available; that transition is allowed here as part of the
+    /// controlled check-out flow.
     pub fn update_room_status(&self, room_id: Uuid, status: RoomStatus) -> AppResult<Room> {
-        self.update_room(room_id, None, Some(status))
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let current: Room = rooms::table
+            .find(room_id)
+            .first(&mut conn)
+            .map_err(|_| AppError::NotFound(format!("Room with ID '{}' not found", room_id)))?;
+
+        if !current.status.can_transition_to(status) {
+            return Err(AppError::InvalidStatusTransition(format!(
+                "Cannot transition room from {:?} to {:?}",
+                current.status, status
+            )));
+        }
+
+        diesel::update(rooms::table.find(room_id))
+            .set(rooms::status.eq(status))
+            .get_result(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))
     }
 }
-

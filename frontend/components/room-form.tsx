@@ -187,7 +187,11 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="available" className="text-slate-100">
+                  <SelectItem
+                    value="available"
+                    className="text-slate-100"
+                    disabled={room.status === "occupied"}
+                  >
                     Available
                   </SelectItem>
                   <SelectItem

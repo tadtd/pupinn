@@ -64,7 +64,7 @@ export function RoomList({
     };
     const variant = variants[status];
     return (
-      <Badge className={`${variant.className} flex items-center`}>
+      <Badge className={`${variant.className}`}>
         {variant.icon}
         {variant.label}
       </Badge>
