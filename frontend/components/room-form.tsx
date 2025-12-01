@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -23,7 +23,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-import { apiClient } from "@/lib/api-client";
+import { apiClient, getErrorMessage } from "@/lib/api-client";
 import { type RoomType, type RoomStatus, type Room } from "@/lib/validators";
 
 const createRoomSchema = z.object({
@@ -75,7 +75,7 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
     setValue,
     watch,
     formState: { errors },
-  } = form as any;
+  } = form as UseFormReturn<CreateRoomData | UpdateRoomData>;
 
   const selectedRoomType = watch("room_type");
   const selectedStatus = watch("status");
@@ -92,9 +92,9 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
         response = await apiClient.post<Room>("/rooms", data);
       }
       onSuccess(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.response?.data?.message ||
+        getErrorMessage(err) ||
           `Failed to ${isEditMode ? "update" : "create"} room`
       );
     } finally {
@@ -134,9 +134,9 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
                 className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
                 {...register("number")}
               />
-              {errors.number && (
+              {"number" in errors && (
                 <p className="text-sm text-red-400">
-                  {errors.number.message as string}
+                  {errors.number?.message as string}
                 </p>
               )}
             </div>
@@ -229,7 +229,7 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
             <Button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold"
+              className="flex-1 bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold"
             >
               {isLoading
                 ? isEditMode

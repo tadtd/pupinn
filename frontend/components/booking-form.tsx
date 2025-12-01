@@ -1,26 +1,31 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { format, addDays } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format, addDays } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-import { CreateBookingRequestSchema, type CreateBookingRequest, type Room, type RoomType } from '@/lib/validators';
-import { apiClient } from '@/lib/api-client';
+import {
+  CreateBookingRequestSchema,
+  type CreateBookingRequest,
+  type Room,
+  type RoomType,
+} from "@/lib/validators";
+import { apiClient, getErrorMessage } from "@/lib/api-client";
 
 interface AvailableRoom extends Room {
   is_available: boolean;
@@ -37,8 +42,8 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
   const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const today = format(new Date(), "yyyy-MM-dd");
+  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
 
   const {
     register,
@@ -49,16 +54,16 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
   } = useForm<CreateBookingRequest>({
     resolver: zodResolver(CreateBookingRequestSchema),
     defaultValues: {
-      guest_name: '',
-      room_id: '',
+      guest_name: "",
+      room_id: "",
       check_in_date: today,
       check_out_date: tomorrow,
     },
   });
 
-  const checkInDate = watch('check_in_date');
-  const checkOutDate = watch('check_out_date');
-  const selectedRoomId = watch('room_id');
+  const checkInDate = watch("check_in_date");
+  const checkOutDate = watch("check_out_date");
+  const selectedRoomId = watch("room_id");
 
   // Fetch available rooms when dates change
   useEffect(() => {
@@ -72,15 +77,18 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
 
       setRoomsLoading(true);
       try {
-        const response = await apiClient.get<AvailableRoom[]>('/rooms/available', {
-          params: {
-            check_in_date: checkInDate,
-            check_out_date: checkOutDate,
-          },
-        });
+        const response = await apiClient.get<AvailableRoom[]>(
+          "/rooms/available",
+          {
+            params: {
+              check_in_date: checkInDate,
+              check_out_date: checkOutDate,
+            },
+          }
+        );
         setAvailableRooms(response.data);
       } catch (err) {
-        console.error('Failed to fetch available rooms:', err);
+        console.error("Failed to fetch available rooms:", err);
         setAvailableRooms([]);
       } finally {
         setRoomsLoading(false);
@@ -95,10 +103,13 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
     setError(null);
 
     try {
-      const response = await apiClient.post<{ reference: string }>('/bookings', data);
+      const response = await apiClient.post<{ reference: string }>(
+        "/bookings",
+        data
+      );
       onSuccess(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create booking');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || "Failed to create booking");
     } finally {
       setIsLoading(false);
     }
@@ -106,18 +117,22 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
 
   const getRoomTypeLabel = (type: RoomType) => {
     const labels: Record<RoomType, string> = {
-      single: 'Single',
-      double: 'Double',
-      suite: 'Suite',
+      single: "Single",
+      double: "Double",
+      suite: "Suite",
     };
     return labels[type];
   };
 
   const getStatusBadge = (isAvailable: boolean) => {
     return isAvailable ? (
-      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">Available</Badge>
+      <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600">
+        Available
+      </Badge>
     ) : (
-      <Badge variant="secondary" className="bg-slate-500">Unavailable</Badge>
+      <Badge variant="secondary" className="bg-slate-500">
+        Unavailable
+      </Badge>
     );
   };
 
@@ -139,51 +154,63 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
 
           {/* Guest Name */}
           <div className="space-y-2">
-            <Label htmlFor="guest_name" className="text-slate-300">Guest Name</Label>
+            <Label htmlFor="guest_name" className="text-slate-300">
+              Guest Name
+            </Label>
             <Input
               id="guest_name"
               placeholder="Enter guest's full name"
               className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-              {...register('guest_name')}
+              {...register("guest_name")}
             />
             {errors.guest_name && (
-              <p className="text-sm text-red-400">{errors.guest_name.message}</p>
+              <p className="text-sm text-red-400">
+                {errors.guest_name.message}
+              </p>
             )}
           </div>
 
           {/* Date Selection */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="check_in_date" className="text-slate-300">Check-in Date</Label>
+              <Label htmlFor="check_in_date" className="text-slate-300">
+                Check-in Date
+              </Label>
               <div className="relative">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="check_in_date"
                   type="date"
                   min={today}
-                  className="pl-10 bg-slate-700/50 border-slate-600 text-slate-100"
-                  {...register('check_in_date')}
+                  className="pr-10 bg-slate-700/50 border-slate-600 text-slate-100 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  {...register("check_in_date")}
                 />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
               {errors.check_in_date && (
-                <p className="text-sm text-red-400">{errors.check_in_date.message}</p>
+                <p className="text-sm text-red-400">
+                  {errors.check_in_date.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="check_out_date" className="text-slate-300">Check-out Date</Label>
+              <Label htmlFor="check_out_date" className="text-slate-300">
+                Check-out Date
+              </Label>
               <div className="relative">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="check_out_date"
                   type="date"
                   min={checkInDate || today}
-                  className="pl-10 bg-slate-700/50 border-slate-600 text-slate-100"
-                  {...register('check_out_date')}
+                  className="pr-10 bg-slate-700/50 border-slate-600 text-slate-100 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-10 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  {...register("check_out_date")}
                 />
+                <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
               {errors.check_out_date && (
-                <p className="text-sm text-red-400">{errors.check_out_date.message}</p>
+                <p className="text-sm text-red-400">
+                  {errors.check_out_date.message}
+                </p>
               )}
             </div>
           </div>
@@ -204,13 +231,15 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
                 {availableRooms.map((room) => (
                   <div
                     key={room.id}
-                    onClick={() => room.is_available && setValue('room_id', room.id)}
+                    onClick={() =>
+                      room.is_available && setValue("room_id", room.id)
+                    }
                     className={`p-4 rounded-lg border cursor-pointer transition-all ${
                       selectedRoomId === room.id
-                        ? 'border-amber-500 bg-amber-500/10'
+                        ? "border-amber-500 bg-amber-500/10"
                         : room.is_available
-                        ? 'border-slate-600 bg-slate-700/30 hover:border-slate-500'
-                        : 'border-slate-700 bg-slate-800/50 cursor-not-allowed opacity-50'
+                          ? "border-slate-600 bg-slate-700/30 hover:border-slate-500"
+                          : "border-slate-700 bg-slate-800/50 cursor-not-allowed opacity-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -228,7 +257,7 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
                 ))}
               </div>
             )}
-            <input type="hidden" {...register('room_id')} />
+            <input type="hidden" {...register("room_id")} />
             {errors.room_id && (
               <p className="text-sm text-red-400">{errors.room_id.message}</p>
             )}
@@ -249,9 +278,9 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
             <Button
               type="submit"
               disabled={isLoading || !selectedRoomId}
-              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold"
+              className="flex-1 bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold"
             >
-              {isLoading ? 'Creating...' : 'Create Booking'}
+              {isLoading ? "Creating..." : "Create Booking"}
             </Button>
           </div>
         </form>
@@ -259,4 +288,3 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
     </Card>
   );
 }
-
