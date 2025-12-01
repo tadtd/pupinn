@@ -1,63 +1,183 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Calendar, Home, Users, LogOut, Settings } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/components/auth-provider';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading, logout, isAdmin } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Navigation */}
+      <nav className="border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
+                  <Home className="h-5 w-5 text-slate-900" />
+                </div>
+                <span className="text-xl font-bold text-slate-100">HMS</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Link href="/bookings">
+                  <Button variant="ghost" className="text-slate-300 hover:text-slate-100 hover:bg-slate-700">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Bookings
+                  </Button>
+                </Link>
+                <Link href="/rooms">
+                  <Button variant="ghost" className="text-slate-300 hover:text-slate-100 hover:bg-slate-700">
+                    <Home className="h-4 w-4 mr-2" />
+                    Rooms
+                  </Button>
+                </Link>
+                {isAdmin && (
+                  <Link href="/users">
+                    <Button variant="ghost" className="text-slate-300 hover:text-slate-100 hover:bg-slate-700">
+                      <Users className="h-4 w-4 mr-2" />
+                      Users
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-400">
+                {user?.username} ({user?.role})
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/8 px-5 transition-colors hover:border-transparent hover:bg-black/4 dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-100">Welcome back, {user?.username}!</h1>
+          <p className="text-slate-400 mt-1">Hotel Management System Dashboard</p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link href="/bookings/new">
+            <Card className="bg-slate-800/80 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Calendar className="h-6 w-6 text-slate-900" />
+                </div>
+                <CardTitle className="text-slate-100">New Booking</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Create a new guest reservation
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/bookings">
+            <Card className="bg-slate-800/80 border-slate-700 hover:border-blue-500/50 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Calendar className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-slate-100">View Bookings</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Manage existing reservations
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          <Link href="/rooms">
+            <Card className="bg-slate-800/80 border-slate-700 hover:border-emerald-500/50 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Home className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-slate-100">Room Management</CardTitle>
+                <CardDescription className="text-slate-400">
+                  View and manage room inventory
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {isAdmin && (
+            <Link href="/users">
+              <Card className="bg-slate-800/80 border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer group">
+                <CardHeader>
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-slate-100">User Management</CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Manage staff accounts (Admin only)
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          )}
+        </div>
+
+        {/* Quick Stats Placeholder */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-slate-100">--</div>
+              <div className="text-sm text-slate-400">Today's Check-ins</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-slate-100">--</div>
+              <div className="text-sm text-slate-400">Today's Check-outs</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-slate-100">--</div>
+              <div className="text-sm text-slate-400">Occupied Rooms</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-slate-100">--</div>
+              <div className="text-sm text-slate-400">Available Rooms</div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

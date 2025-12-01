@@ -1,1 +1,21 @@
+# Build artifacts
 /target
+debug/
+release/
+
+# Rust
+**/*.rs.bk
+*.rlib
+*.prof*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log

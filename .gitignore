@@ -1,2 +1,28 @@
+# Specify/Cursor
 .specify
 .cursor
+
+# Specs (keep for now, remove if you want to track specs)
+specs
+
+# Rust
+target/
+**/*.rs.bk
+*.rlib
+Cargo.lock
+
+# Node.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+.env*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

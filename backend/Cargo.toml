@@ -1,6 +1,50 @@
 [package]
 name = "hotel-management-backend"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+
+[lib]
+name = "hotel_management_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
+[[bin]]
+name = "seed"
+path = "src/bin/seed.rs"
 
 [dependencies]
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Database
+diesel = { version = "2.2", features = ["postgres", "r2d2", "uuid", "chrono"] }
+diesel-derive-enum = { version = "2.1", features = ["postgres"] }
+
+# Authentication
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+dotenvy = "0.15"
+rand = "0.8"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+regex = "1"

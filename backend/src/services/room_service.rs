@@ -1,0 +1,143 @@
+use diesel::prelude::*;
+use uuid::Uuid;
+
+use crate::db::DbPool;
+use crate::errors::{AppError, AppResult};
+use crate::models::{NewRoom, Room, RoomStatus, RoomType, UpdateRoom};
+use crate::schema::rooms;
+
+/// Room service for managing hotel rooms
+pub struct RoomService {
+    pool: DbPool,
+}
+
+impl RoomService {
+    /// Create a new RoomService instance
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    /// Create a new room
+    pub fn create_room(&self, number: &str, room_type: RoomType) -> AppResult<Room> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        // Check for duplicate room number
+        let existing: Option<Room> = rooms::table
+            .filter(rooms::number.eq(number))
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        if existing.is_some() {
+            return Err(AppError::DuplicateRoom(format!(
+                "Room number '{}' already exists",
+                number
+            )));
+        }
+
+        let new_room = NewRoom { number, room_type };
+
+        diesel::insert_into(rooms::table)
+            .values(&new_room)
+            .get_result(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))
+    }
+
+    /// Get a room by ID
+    pub fn get_room_by_id(&self, room_id: Uuid) -> AppResult<Room> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        rooms::table
+            .find(room_id)
+            .first(&mut conn)
+            .map_err(|_| AppError::NotFound(format!("Room with ID '{}' not found", room_id)))
+    }
+
+    /// Get a room by number
+    pub fn get_room_by_number(&self, number: &str) -> AppResult<Room> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        rooms::table
+            .filter(rooms::number.eq(number))
+            .first(&mut conn)
+            .map_err(|_| AppError::NotFound(format!("Room '{}' not found", number)))
+    }
+
+    /// List all rooms with optional filters
+    pub fn list_rooms(
+        &self,
+        status_filter: Option<RoomStatus>,
+        type_filter: Option<RoomType>,
+    ) -> AppResult<Vec<Room>> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let mut query = rooms::table.into_boxed();
+
+        if let Some(status) = status_filter {
+            query = query.filter(rooms::status.eq(status));
+        }
+
+        if let Some(room_type) = type_filter {
+            query = query.filter(rooms::room_type.eq(room_type));
+        }
+
+        query
+            .order(rooms::number.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))
+    }
+
+    /// Update a room
+    pub fn update_room(
+        &self,
+        room_id: Uuid,
+        room_type: Option<RoomType>,
+        status: Option<RoomStatus>,
+    ) -> AppResult<Room> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        // Get current room
+        let current: Room = rooms::table
+            .find(room_id)
+            .first(&mut conn)
+            .map_err(|_| AppError::NotFound(format!("Room with ID '{}' not found", room_id)))?;
+
+        // Validate status transition if status is being changed
+        if let Some(new_status) = status {
+            if !current.status.can_transition_to(new_status) {
+                return Err(AppError::InvalidStatusTransition(format!(
+                    "Cannot transition room from {:?} to {:?}",
+                    current.status, new_status
+                )));
+            }
+        }
+
+        let update = UpdateRoom { room_type, status };
+
+        diesel::update(rooms::table.find(room_id))
+            .set(&update)
+            .get_result(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))
+    }
+
+    /// Update room status (internal use for check-in/out)
+    pub fn update_room_status(&self, room_id: Uuid, status: RoomStatus) -> AppResult<Room> {
+        self.update_room(room_id, None, Some(status))
+    }
+}
+
