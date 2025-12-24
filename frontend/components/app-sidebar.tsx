@@ -87,6 +87,7 @@ const RECEPTIONIST_NAVIGATION = [
     items: [
       { title: "Dashboard", href: "/staff/receptionist/dashboard", icon: Home },
       { title: "Bookings", href: "/staff/receptionist/bookings", icon: CalendarDays },
+      { title: "Rooms", href: "/staff/receptionist/rooms", icon: BedDouble },
     ],
   },
   {

@@ -40,11 +40,29 @@ pub fn create_router(state: AppState) -> Router {
             )),
         );
 
-    let room_routes = Router::new()
-        .route("/", get(rooms::list_rooms).post(rooms::create_room))
+    // Public room routes (no auth required)
+    let public_room_routes = Router::new()
         // Available rooms endpoint is public (no auth required) for guests to search
-        .route("/available", get(rooms::available_rooms))
-        .route("/:id", get(rooms::get_room).patch(rooms::update_room));
+        .route("/available", get(rooms::available_rooms));
+    
+    // Protected room routes (require staff auth)
+    let protected_room_routes = Router::new()
+        .route("/", get(rooms::list_rooms).post(rooms::create_room))
+        .route("/:id", get(rooms::get_room).patch(rooms::update_room))
+        // Require staff authentication for room management (admin/receptionist)
+        // Note: Middleware is applied bottom-up, so require_auth (outermost) is added last
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_staff,
+        ))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_auth,
+        ));
+    
+    let room_routes = Router::new()
+        .merge(public_room_routes)
+        .merge(protected_room_routes);
 
     let booking_routes = Router::new()
         .route(

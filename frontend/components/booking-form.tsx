@@ -222,39 +222,57 @@ export function BookingForm({ onSuccess, onCancel }: BookingFormProps) {
               <div className="p-4 text-center text-slate-400 bg-slate-700/30 rounded-lg">
                 Loading available rooms...
               </div>
-            ) : availableRooms.length === 0 ? (
+            ) : availableRooms.filter(r => r.is_available).length === 0 ? (
               <div className="p-4 text-center text-slate-400 bg-slate-700/30 rounded-lg">
-                No rooms available for selected dates
+                <p className="mb-2">No rooms available for selected dates</p>
+                {availableRooms.some(r => !r.is_available) && (
+                  <p className="text-xs text-slate-500">
+                    Some rooms are unavailable (Occupied, Dirty, Maintenance, or Cleaning)
+                  </p>
+                )}
               </div>
             ) : (
               <div className="grid gap-2">
-                {availableRooms.map((room) => (
-                  <div
-                    key={room.id}
-                    onClick={() =>
-                      room.is_available && setValue("room_id", room.id)
-                    }
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                      selectedRoomId === room.id
-                        ? "border-amber-500 bg-amber-500/10"
-                        : room.is_available
-                          ? "border-slate-600 bg-slate-700/30 hover:border-slate-500"
-                          : "border-slate-700 bg-slate-800/50 cursor-not-allowed opacity-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-lg font-semibold text-slate-100">
-                          Room {room.number}
-                        </span>
-                        <span className="ml-2 text-slate-400">
-                          ({getRoomTypeLabel(room.room_type)})
-                        </span>
+                {availableRooms.map((room) => {
+                  // Show actual room status for ALL unavailable rooms (not just occupied/dirty/maintenance)
+                  const isUnavailable = !room.is_available;
+                  
+                  return (
+                    <div
+                      key={room.id}
+                      onClick={() =>
+                        room.is_available && setValue("room_id", room.id)
+                      }
+                      className={`p-4 rounded-lg border transition-all ${
+                        selectedRoomId === room.id
+                          ? "border-amber-500 bg-amber-500/10"
+                          : room.is_available
+                            ? "border-slate-600 bg-slate-700/30 hover:border-slate-500 cursor-pointer"
+                            : "border-slate-700 bg-slate-800/50 cursor-not-allowed opacity-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-lg font-semibold text-slate-100">
+                              Room {room.number}
+                            </span>
+                            <span className="text-slate-400">
+                              ({getRoomTypeLabel(room.room_type)})
+                            </span>
+                            {/* Show actual room status for ALL unavailable rooms */}
+                            {isUnavailable && room.status && room.status.toLowerCase() !== "available" && (
+                              <Badge variant="outline" className="text-xs border-red-500/30 text-red-400 capitalize">
+                                {room.status}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {getStatusBadge(room.is_available)}
                       </div>
-                      {getStatusBadge(room.is_available)}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <input type="hidden" {...register("room_id")} />

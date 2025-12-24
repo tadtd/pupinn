@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { RouteGuard } from "@/components/route-guard";
 import { CleanerDashboard } from "@/components/cleaner-dashboard";
-import { getCleanerRooms, updateRoomStatus, getErrorMessage } from "@/lib/api-client";
+import { apiClient, getErrorMessage } from "@/lib/api-client";
 import { type Room, type RoomStatus } from "@/lib/validators";
 
 export default function AdminHousekeepingPage() {
@@ -28,10 +28,11 @@ export default function AdminHousekeepingPage() {
   } = useQuery({
     queryKey: ["cleaner-rooms"],
     queryFn: async () => {
+      // Use regular /rooms endpoint for admin (not cleaner-specific endpoint)
       const [dirtyRooms, cleaningRooms, availableRooms] = await Promise.all([
-        getCleanerRooms("dirty"),
-        getCleanerRooms("cleaning"),
-        getCleanerRooms("available"),
+        apiClient.get<Room[]>("/rooms", { params: { status: "dirty" } }).then(r => r.data),
+        apiClient.get<Room[]>("/rooms", { params: { status: "cleaning" } }).then(r => r.data),
+        apiClient.get<Room[]>("/rooms", { params: { status: "available" } }).then(r => r.data),
       ]);
       return [...dirtyRooms, ...cleaningRooms, ...availableRooms];
     },
@@ -39,10 +40,19 @@ export default function AdminHousekeepingPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ roomId, status }: { roomId: string; status: RoomStatus }) =>
-      updateRoomStatus(roomId, status),
+    mutationFn: async ({ roomId, status }: { roomId: string; status: RoomStatus }) => {
+      // Use regular /rooms/:id endpoint for admin (not cleaner-specific endpoint)
+      const response = await apiClient.patch<Room>(`/rooms/${roomId}`, { status });
+      return response.data;
+    },
     onSuccess: () => {
+      // Invalidate all room-related queries to ensure synchronization
       queryClient.invalidateQueries({ queryKey: ["cleaner-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      // Invalidate all availableRooms queries regardless of parameters
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "availableRooms" 
+      });
     },
   });
 

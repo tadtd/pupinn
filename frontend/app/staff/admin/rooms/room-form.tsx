@@ -190,44 +190,37 @@ export function RoomForm({ room, onSuccess, onCancel }: RoomFormProps) {
                   <SelectItem
                     value="available"
                     className="text-slate-100"
-                    disabled={room.status === "occupied"}
                   >
                     Available
                   </SelectItem>
                   <SelectItem
                     value="occupied"
                     className="text-slate-100"
-                    disabled={room.status !== "occupied"}
                   >
                     Occupied
                   </SelectItem>
                   <SelectItem
                     value="maintenance"
                     className="text-slate-100"
-                    disabled={room.status === "occupied"}
                   >
                     Maintenance
                   </SelectItem>
                   <SelectItem
                     value="dirty"
                     className="text-slate-100"
-                    disabled={room.status === "dirty"}
                   >
                     Dirty
                   </SelectItem>
                   <SelectItem
                     value="cleaning"
                     className="text-slate-100"
-                    disabled={room.status === "cleaning"}
                   >
                     Cleaning
                   </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500">
-                Note: Occupied rooms can only be set to Available (via
-                check-out). Maintenance is only available for non-occupied
-                rooms.
+                Note: Status transitions must follow valid business rules. The backend will validate the transition.
               </p>
             </div>
           )}

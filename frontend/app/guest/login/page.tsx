@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,12 +17,15 @@ import {
 } from "@/components/ui/card";
 import { getErrorMessage } from "@/lib/api-client";
 import { loginGuest } from "@/lib/guest-auth";
-import {
-  GuestLoginRequestSchema,
-  type GuestLoginRequest,
-} from "@/lib/validators";
 import { PawPrint, Building2 } from "lucide-react";
 import Link from "next/link";
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function GuestLoginPage() {
   const router = useRouter();
@@ -32,16 +36,21 @@ export default function GuestLoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<GuestLoginRequest>({
-    resolver: zodResolver(GuestLoginRequestSchema),
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: GuestLoginRequest) => {
+  const onSubmit = async (data: LoginFormData) => {
     setError(null);
     setIsLoading(true);
     try {
-      await loginGuest(data);
+      await loginGuest({
+        email: data.email,
+        password: data.password,
+      });
+      // Redirect to guest dashboard after successful login
       router.push("/guest");
+      router.refresh(); // Refresh to update auth state
     } catch (err: unknown) {
       setError(getErrorMessage(err) || "Login failed. Please try again.");
     } finally {
@@ -59,7 +68,7 @@ export default function GuestLoginPage() {
             <PawPrint className="h-8 w-8 text-slate-900" />
           </div>
           <CardTitle className="text-2xl font-bold text-slate-100">
-            Welcome to Pupinn
+            Guest Portal
           </CardTitle>
           <CardDescription className="text-slate-400">
             Sign in to manage your bookings
@@ -80,7 +89,7 @@ export default function GuestLoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
                 {...register("email")}
               />
@@ -137,9 +146,18 @@ export default function GuestLoginPage() {
               )}
             </Button>
 
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-800/80 px-2 text-slate-500">Or</span>
+              </div>
+            </div>
+
             <div className="text-center text-sm">
               <p className="text-slate-400">
-                Don&apos;t have an account?{" "}
+                Don't have an account?{" "}
                 <Link
                   href="/register"
                   className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
@@ -160,12 +178,12 @@ export default function GuestLoginPage() {
 
             <div className="text-center text-sm">
               <p className="text-slate-400">
-                Hotel staff?{" "}
+                Staff member?{" "}
                 <Link
                   href="/staff/login"
                   className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
                 >
-                  Staff portal
+                  Staff login
                 </Link>
               </p>
             </div>
@@ -173,14 +191,9 @@ export default function GuestLoginPage() {
         </CardContent>
       </Card>
 
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 text-slate-500 text-sm">
-        <Building2 className="h-4 w-4" />
-        <Link
-          href="/staff/login"
-          className="hover:text-slate-400 transition-colors"
-        >
-          Staff Login
-        </Link>
+      <div className="fixed bottom-4 left-4 flex items-center gap-2 text-slate-500 text-sm">
+        <PawPrint className="h-4 w-4" />
+        <span>Pupinn Hotel Management</span>
       </div>
     </div>
   );

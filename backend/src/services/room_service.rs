@@ -120,19 +120,25 @@ impl RoomService {
 
         // Validate status transition if status is being changed
         if let Some(new_status) = status {
-            // Business rule: Occupied -> Available must go through the check-out flow,
-            // not a direct room edit.
+            // Special business rule: Occupied -> Available must still go through the
+            // controlled check-out flow, not a direct room edit.
             if current.status == RoomStatus::Occupied && new_status == RoomStatus::Available {
                 return Err(AppError::InvalidStatusTransition(
                     "Occupied rooms can only be set to available via guest check-out.".into(),
                 ));
             }
 
-            if !current.status.can_transition_to(new_status) {
-                return Err(AppError::InvalidStatusTransition(format!(
-                    "Cannot transition room from {:?} to {:?}",
-                    current.status, new_status
-                )));
+            // Admin override: allow setting a room to Dirty from any status.
+            // This lets staff mark a room as dirty even if it's currently maintenance,
+            // occupied, cleaning, etc.
+            if new_status != RoomStatus::Dirty {
+                // For all other statuses, fall back to normal transition rules.
+                if !current.status.can_transition_to(new_status) {
+                    return Err(AppError::InvalidStatusTransition(format!(
+                        "Cannot transition room from {:?} to {:?}",
+                        current.status, new_status
+                    )));
+                }
             }
         }
 

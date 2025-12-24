@@ -348,6 +348,21 @@ export default function ReceptionistDashboardPage() {
               </CardHeader>
             </Card>
           </Link>
+
+          {/* Action 3: View Rooms */}
+          <Link href="/staff/receptionist/rooms">
+            <Card className="bg-slate-800/80 border-slate-700 hover:border-emerald-500/50 transition-colors cursor-pointer group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-linear-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <DoorOpen className="h-6 w-6 text-white" />
+                </div>
+                <CardTitle className="text-slate-100">View Rooms</CardTitle>
+                <CardDescription className="text-slate-400">
+                  See current room status and availability
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
       </div>
     </RouteGuard>

@@ -44,8 +44,13 @@ export default function CleanerDashboardPage() {
     mutationFn: ({ roomId, status }: { roomId: string; status: RoomStatus }) =>
       updateRoomStatus(roomId, status),
     onSuccess: () => {
-      // Refetch rooms after successful update
+      // Refetch rooms after successful update and sync all room queries
       queryClient.invalidateQueries({ queryKey: ["cleaner-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      // Invalidate all availableRooms queries regardless of parameters
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "availableRooms" 
+      });
     },
   });
 

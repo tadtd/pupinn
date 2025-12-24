@@ -2,8 +2,8 @@
 
 import { GuestAuthProvider } from "@/components/guest-auth-provider";
 import { GuestNav } from "@/components/guest-nav";
-import { useMemo } from "react";
-import { redirect } from "next/navigation";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { getGuestToken } from "@/lib/guest-auth";
 
 export default function GuestLayout({
@@ -11,15 +11,31 @@ export default function GuestLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Check authentication synchronously on initial render
-  const isAuthenticated = useMemo(() => {
-    if (typeof window === "undefined") return true; // SSR - assume authenticated
-    return !!getGuestToken();
-  }, []);
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  const [isLoginPage, setIsLoginPage] = useState(false);
 
-  // Redirect if not authenticated (client-side only)
-  if (typeof window !== "undefined" && !isAuthenticated) {
-    redirect("/guest/login");
+  // Set mounted state after client-side hydration
+  useEffect(() => {
+    setIsMounted(true);
+    setIsLoginPage(pathname === "/guest/login");
+  }, [pathname]);
+
+  // Check authentication and redirect if needed (client-side only)
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    const isAuthenticated = !!getGuestToken();
+    if (!isAuthenticated && !isLoginPage) {
+      router.push("/guest/login");
+    }
+  }, [isMounted, isLoginPage, router]);
+
+  // During SSR and initial render, always render the same structure
+  // This prevents hydration mismatches
+  if (!isMounted || isLoginPage) {
+    return <>{children}</>;
   }
 
   return (

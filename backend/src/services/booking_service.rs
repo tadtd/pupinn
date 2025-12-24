@@ -341,7 +341,17 @@ impl BookingService {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         // Update room status to occupied
+        // First check current room status - if dirty, set to available first
         let room_service = RoomService::new(self.pool.clone());
+        let current_room = room_service.get_room_by_id(booking.room_id)?;
+        
+        // If room is dirty, we need to set it to available first (dirty -> available -> occupied)
+        // This handles the case where a room was checked out but not yet cleaned
+        if current_room.status == RoomStatus::Dirty {
+            room_service.update_room_status(booking.room_id, RoomStatus::Available)?;
+        }
+        
+        // Now set to occupied (available -> occupied is allowed)
         room_service.update_room_status(booking.room_id, RoomStatus::Occupied)?;
 
         Ok(updated_booking)

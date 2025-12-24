@@ -41,6 +41,10 @@ export default function NewRoomPage() {
   const handleSuccess = (room: Room) => {
     // Invalidate the rooms query to trigger a refetch
     queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    // Invalidate all availableRooms queries for synchronization
+    queryClient.invalidateQueries({ predicate: (query) => 
+      query.queryKey[0] === "availableRooms" 
+    });
 
     toast({
       title: "Room Created",

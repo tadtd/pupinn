@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { type Room } from "@/lib/validators";
 
 export default function AdminRoomsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -187,7 +188,17 @@ export default function AdminRoomsPage() {
           rooms={rooms || []}
           isLoading={isLoading}
           error={error as Error | null}
-          onRoomUpdated={() => refetch()}
+          onRoomUpdated={() => {
+            refetch();
+            // Also invalidate other room queries for synchronization
+            queryClient.invalidateQueries({ queryKey: ["rooms"] });
+            queryClient.invalidateQueries({ queryKey: ["cleaner-rooms"] });
+            queryClient.invalidateQueries({ queryKey: ["availableRooms"] });
+            // Invalidate all availableRooms queries regardless of parameters
+            queryClient.invalidateQueries({ predicate: (query) => 
+              query.queryKey[0] === "availableRooms" 
+            });
+          }}
           isAdmin={isAdmin}
         />
       </div>

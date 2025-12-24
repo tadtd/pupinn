@@ -55,6 +55,15 @@ export function RouteGuard({
   useEffect(() => {
     if (isLoading) return;
 
+    // Debug logging (can be removed in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RouteGuard check:', { 
+        userRole: user?.role, 
+        requiredRole, 
+        hasAccess: user ? hasRoleAccess(user.role, requiredRole) : false 
+      });
+    }
+
     // Check if user is staff and has required role access
     if (user && hasRoleAccess(user.role, requiredRole)) {
       setIsChecking(false);

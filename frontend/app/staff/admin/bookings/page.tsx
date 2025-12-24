@@ -102,6 +102,11 @@ export default function AdminBookingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      // Invalidate all availableRooms queries for synchronization
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "availableRooms" 
+      });
       toast({
         title: "Check-in Successful",
         description: "Guest has been checked in.",
@@ -129,6 +134,11 @@ export default function AdminBookingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      // Invalidate all availableRooms queries for synchronization
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "availableRooms" 
+      });
       toast({
         title: "Check-out Successful",
         description: "Guest has been checked out. Room is now available.",
@@ -162,6 +172,11 @@ export default function AdminBookingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      // Invalidate all availableRooms queries for synchronization
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "availableRooms" 
+      });
       toast({
         title: "Booking Cancelled",
         description: "The booking has been cancelled.",
