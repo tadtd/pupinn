@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use diesel::dsl::now;
 
 use crate::schema::users;
 
@@ -12,9 +13,13 @@ use crate::schema::users;
 #[serde(rename_all = "snake_case")]
 #[DbValueStyle = "snake_case"]
 pub enum UserRole {
+    #[serde(rename = "admin")]
     Admin,
+    #[serde(rename = "receptionist")]
     Receptionist,
+    #[serde(rename = "guest")]
     Guest,
+    #[serde(rename = "cleaner")]
     Cleaner,
 }
 
@@ -35,6 +40,12 @@ pub struct User {
     pub email: Option<String>,
     /// Display name for guests
     pub full_name: Option<String>,
+    /// Phone number (for guests)
+    pub phone: Option<String>,
+    /// Identification number (for guests)
+    pub id_number: Option<String>,
+    /// Soft delete timestamp for employee accounts (NULL = active)
+    pub deactivated_at: Option<DateTime<Utc>>,
 }
 
 /// New staff user for insertion (username required)
@@ -46,6 +57,8 @@ pub struct NewUser<'a> {
     pub role: UserRole,
     pub email: Option<&'a str>,
     pub full_name: Option<&'a str>,
+    pub phone: Option<&'a str>,
+    pub id_number: Option<&'a str>,
 }
 
 /// User info without sensitive data (for API responses) - for staff users
@@ -125,4 +138,19 @@ pub struct NewGuestUser<'a> {
     pub full_name: &'a str,
     pub password_hash: &'a str,
     pub role: UserRole,
+    pub phone: Option<&'a str>,
+    pub id_number: Option<&'a str>,
+}
+
+/// User update changeset for employee management
+#[derive(Debug, AsChangeset, Default)]
+#[diesel(table_name = users)]
+pub struct UpdateUser {
+    pub username: Option<String>,
+    pub role: Option<UserRole>,
+    pub email: Option<String>,
+    pub full_name: Option<String>,
+    pub phone: Option<String>,
+    pub id_number: Option<String>,
+    pub deactivated_at: Option<Option<DateTime<chrono::Utc>>>,
 }

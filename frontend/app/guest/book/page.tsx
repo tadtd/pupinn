@@ -26,6 +26,7 @@ interface AvailableRoomsResponse {
   room_type: string;
   status: string;
   is_available: boolean;
+  price?: string;
 }
 
 interface BookingResponse {
@@ -62,7 +63,7 @@ export default function GuestBookPage() {
             },
           }
         );
-        // Filter only available rooms and map to Room type
+        // Filter only available rooms and map to Room type (include price)
         return response.data
           .filter((room) => room.is_available)
           .map((room) => ({
@@ -70,6 +71,7 @@ export default function GuestBookPage() {
             number: room.number,
             room_type: room.room_type as "single" | "double" | "suite",
             status: room.status as "available" | "occupied" | "maintenance",
+            price: room.price ?? undefined,
             created_at: "",
             updated_at: "",
           }));

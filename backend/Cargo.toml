@@ -25,7 +25,7 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 tokio = { version = "1", features = ["full"] }
 
 # Database
-diesel = { version = "2.2", features = ["postgres", "r2d2", "uuid", "chrono"] }
+diesel = {version = "2.3.4", features = ["postgres", "r2d2", "uuid", "chrono", "numeric"] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 
 # Authentication
@@ -44,6 +44,7 @@ rand = "0.8"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+bigdecimal = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

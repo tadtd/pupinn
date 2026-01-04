@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider'); 
   }
   return context;
 }
@@ -103,7 +103,7 @@ export function useAuth() {
 // HOC for protected routes
 export function withAuth<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  requiredRole?: 'admin' | 'receptionist'
+  requiredRole?: 'admin' | 'receptionist' | 'cleaner'
 ) {
   return function ProtectedRoute(props: P) {
     const { isAuthenticated, isLoading, user } = useAuth();

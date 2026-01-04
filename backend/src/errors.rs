@@ -95,7 +95,31 @@ impl IntoResponse for AppError {
 impl From<diesel::result::Error> for AppError {
     fn from(err: diesel::result::Error) -> Self {
         match err {
-            diesel::result::Error::NotFound => AppError::NotFound("Resource not found".to_string()),
+            diesel::result::Error::NotFound => {
+                AppError::NotFound("Resource not found".to_string())
+            }
+            diesel::result::Error::DatabaseError(_kind, info) => {
+                // If we wrapped an AppError earlier into a DatabaseError via
+                // `app_error_to_diesel`, the original AppError's Display text
+                // is available in `info.message()`. Try to map it back to the
+                // correct AppError variant so the HTTP response code is preserved.
+                let msg = info.message().to_string();
+
+                if let Some(rest) = msg.strip_prefix("Validation error: ") {
+                    return AppError::ValidationError(rest.to_string());
+                }
+                if let Some(rest) = msg.strip_prefix("Invalid status-+ transition: ") {
+                    return AppError::InvalidStatusTransition(rest.to_string());
+                }
+                if let Some(rest) = msg.strip_prefix("Room unavailable: ") {
+                    return AppError::RoomUnavailable(rest.to_string());
+                }
+                if let Some(rest) = msg.strip_prefix("Conflict: ") {
+                    return AppError::Conflict(rest.to_string());
+                }
+
+                AppError::DatabaseError(msg)
+            }
             _ => AppError::DatabaseError(err.to_string()),
         }
     }

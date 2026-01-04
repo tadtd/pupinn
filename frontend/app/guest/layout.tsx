@@ -14,15 +14,15 @@ export default function GuestLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [isLoginPage, setIsLoginPage] = useState(false);
+  
+  // Determine if it's the login page
+  const isLoginPage = pathname === "/guest/login";
 
-  // Set mounted state after client-side hydration
   useEffect(() => {
     setIsMounted(true);
-    setIsLoginPage(pathname === "/guest/login");
-  }, [pathname]);
+  }, []);
 
-  // Check authentication and redirect if needed (client-side only)
+  // Check authentication logic
   useEffect(() => {
     if (!isMounted) return;
     
@@ -32,20 +32,25 @@ export default function GuestLayout({
     }
   }, [isMounted, isLoginPage, router]);
 
-  // During SSR and initial render, always render the same structure
-  // This prevents hydration mismatches
-  if (!isMounted || isLoginPage) {
-    return <>{children}</>;
-  }
+  const hasToken = !!getGuestToken();
 
   return (
     <GuestAuthProvider>
-      <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-        <GuestNav />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
-      </div>
+      {/* Render login page normally; for other pages show full dashboard layout.
+          Use either mount state or presence of token so immediate navigations
+          after login (same-window) render the full layout without requiring a
+          manual refresh. */}
+      {isLoginPage ? (
+        <>{children}</>
+      ) : (
+        // Render full dashboard layout for authenticated pages
+        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+          <GuestNav />
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {children}
+          </main>
+        </div>
+      )}
     </GuestAuthProvider>
   );
 }

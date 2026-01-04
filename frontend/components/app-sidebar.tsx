@@ -69,6 +69,9 @@ const ADMIN_NAVIGATION = [
       { title: "Bookings", href: "/staff/admin/bookings", icon: CalendarDays },
       { title: "Rooms", href: "/staff/admin/rooms", icon: BedDouble },
       { title: "Housekeeping", href: "/staff/admin/housekeeping", icon: Brush },
+      { title: "Employees", href: "/staff/admin/employees", icon: Users },
+      { title: "Financial", href: "/staff/admin/financial", icon: NotebookPen },
+      { title: "Guests", href: "/staff/admin/guests", icon: UserPlus },
     ],
   },
   {

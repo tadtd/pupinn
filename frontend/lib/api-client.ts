@@ -12,7 +12,7 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
-// Staff auth keys
+// Staff auth keyss
 const TOKEN_KEY = "hms_token";
 const USER_KEY = "hms_user";
 
@@ -97,14 +97,14 @@ import { type Room, type RoomStatus } from "./validators";
  */
 export async function getCleanerRooms(
   status?: RoomStatus,
-  roomType?: string
+  room_type?: string
 ): Promise<Room[]> {
   const params: Record<string, string> = {};
   if (status) {
     params.status = status;
   }
-  if (roomType) {
-    params.room_type = roomType;
+  if (room_type) {
+    params.room_type = room_type;
   }
   const response = await apiClient.get<Room[]>("/cleaner/rooms", { params });
   return response.data;
@@ -122,4 +122,98 @@ export async function updateRoomStatus(
     status,
   });
   return response.data;
+}
+
+// === Employee API Methods ===
+import {
+  type Employee,
+  type EmployeeListResponse,
+  type CreateEmployeeRequest,
+  type UpdateEmployeeRequest,
+  type ResetPasswordRequest,
+  type EmployeeFilters,
+} from "./validators";
+
+/**
+ * List employees with pagination and filters
+ */
+export async function listEmployees(
+  filters?: EmployeeFilters
+): Promise<EmployeeListResponse> {
+  const params: Record<string, string> = {};
+  if (filters?.page) {
+    params.page = filters.page.toString();
+  }
+  if (filters?.per_page) {
+    params.per_page = filters.per_page.toString();
+  }
+  if (filters?.role) {
+    params.role = filters.role;
+  }
+  if (filters?.search) {
+    params.search = filters.search;
+  }
+  if (filters?.include_deactivated !== undefined) {
+    params.include_deactivated = filters.include_deactivated.toString();
+  }
+  const response = await apiClient.get<EmployeeListResponse>("/admin/employees", { params });
+  return response.data;
+}
+
+/**
+ * Get employee by ID
+ */
+export async function getEmployee(employeeId: string): Promise<Employee> {
+  const response = await apiClient.get<Employee>(`/admin/employees/${employeeId}`);
+  return response.data;
+}
+
+/**
+ * Create a new employee
+ */
+export async function createEmployee(
+  request: CreateEmployeeRequest
+): Promise<Employee> {
+  const response = await apiClient.post<Employee>("/admin/employees", request);
+  return response.data;
+}
+
+/**
+ * Update an employee
+ */
+export async function updateEmployee(
+  employeeId: string,
+  request: UpdateEmployeeRequest
+): Promise<Employee> {
+  const response = await apiClient.patch<Employee>(
+    `/admin/employees/${employeeId}`,
+    request
+  );
+  return response.data;
+}
+
+/**
+ * Delete (soft delete) an employee
+ */
+export async function deleteEmployee(employeeId: string): Promise<void> {
+  console.log("6. Calling DELETE endpoint for:", employeeId);
+  await apiClient.delete(`/admin/employees/${employeeId}`);
+  console.log("7. DELETE request sent successfully");
+}
+
+/**
+ * Reactivate a deactivated employee
+ */
+export async function reactivateEmployee(employeeId: string): Promise<void> {
+  await apiClient.post(`/admin/employees/${employeeId}/reactivate`);
+}
+
+/**
+ * Reset an employee's password
+ */
+export async function resetEmployeePassword(
+  employeeId: string,
+  request: ResetPasswordRequest
+): Promise<void> {
+  await apiClient.post(`/admin/employees/${employeeId}/reset-password`, request);
 }

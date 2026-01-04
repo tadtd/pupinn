@@ -5,6 +5,7 @@ mod errors;
 mod models;
 mod schema;
 mod services;
+mod utils;
 
 use std::net::SocketAddr;
 
@@ -35,6 +36,8 @@ async fn main() {
     // Create database pool
     let pool = create_pool(&config.database_url);
     tracing::info!("Database connection pool created");
+    // Attempt to apply DB fixes for enum normalization / stale statuses
+    crate::db::apply_stale_statuses_fix(&pool);
 
     // Create application state
     let state = AppState {

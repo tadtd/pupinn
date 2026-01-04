@@ -1,13 +1,16 @@
 pub mod auth;
 pub mod bookings;
+pub mod employees;
+pub mod financial;
 pub mod guest_auth;
 pub mod guest_bookings;
+pub mod guests;
 pub mod middleware;
 pub mod rooms;
 
 use axum::{
     middleware as axum_middleware,
-    routing::{get, patch, post},
+    routing::{get, patch, post, delete},
     Router,
 };
 
@@ -43,12 +46,16 @@ pub fn create_router(state: AppState) -> Router {
     // Public room routes (no auth required)
     let public_room_routes = Router::new()
         // Available rooms endpoint is public (no auth required) for guests to search
-        .route("/available", get(rooms::available_rooms));
+        .route("/available", get(rooms::available_rooms))
+        .route("/", get(rooms::list_rooms))
+        .route("/:id", get(rooms::get_room));
     
     // Protected room routes (require staff auth)
     let protected_room_routes = Router::new()
-        .route("/", get(rooms::list_rooms).post(rooms::create_room))
-        .route("/:id", get(rooms::get_room).patch(rooms::update_room))
+        // .route("/", get(rooms::list_rooms).post(rooms::create_room))
+        // .route("/:id", get(rooms::get_room).patch(rooms::update_room))
+        .route("/", post(rooms::create_room))
+        .route("/:id", patch(rooms::update_room))
         // Require staff authentication for room management (admin/receptionist)
         // Note: Middleware is applied bottom-up, so require_auth (outermost) is added last
         .layer(axum_middleware::from_fn_with_state(
@@ -107,6 +114,49 @@ pub fn create_router(state: AppState) -> Router {
             middleware::require_auth,
         ));
 
+    // Admin employee management routes (requires admin auth)
+    let admin_employee_routes = Router::new()
+        .route("/employees", get(employees::list_employees).post(employees::create_employee))
+        .route("/employees/:id", get(employees::get_employee).patch(employees::update_employee).delete(employees::delete_employee))
+        .route("/employees/:id/reactivate", post(employees::reactivate_employee))
+        .route("/employees/:id/reset-password", post(employees::reset_password))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_admin,
+        ))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_auth,
+        ));
+
+    // Admin financial reporting routes (requires admin auth)
+    let admin_financial_routes = Router::new()
+        .route("/financial/rooms", get(financial::list_rooms_with_financials))
+        .route("/financial/rooms/:roomId", get(financial::get_room_financials))
+        .route("/financial/rooms/compare", post(financial::compare_rooms))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_admin,
+        ))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_auth,
+        ));
+
+    // Admin guest CRM routes (requires admin auth)
+    let admin_guest_routes = Router::new()
+        .route("/guests/search", get(guests::search_guests))
+        .route("/guests/:guestId", get(guests::get_guest_profile).patch(guests::update_guest))
+        .route("/guests/:guestId/notes", get(guests::get_guest_notes).post(guests::add_guest_note))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_admin,
+        ))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_auth,
+        ));
+
     // Health check endpoint
     let health_route = Router::new().route("/health", get(health_check));
 
@@ -116,6 +166,12 @@ pub fn create_router(state: AppState) -> Router {
         .nest("/bookings", booking_routes)
         .nest("/guest/bookings", guest_booking_routes)
         .nest("/cleaner", cleaner_routes)
+        .nest(
+            "/admin",
+            admin_employee_routes
+                .merge(admin_financial_routes)
+                .merge(admin_guest_routes),
+        )
         .merge(health_route)
         .with_state(state)
 }

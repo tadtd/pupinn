@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, startOfDay, isBefore } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, getErrorMessage } from "@/lib/api-client";
-import type { GuestBooking, Room } from "@/lib/validators";
+import type { Room } from "@/lib/validators";
 import {
   ArrowLeft,
   Calendar,
@@ -34,6 +34,7 @@ import {
   Loader2,
   X,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 // Backend returns flattened structure (booking fields at top level + room)
@@ -46,7 +47,13 @@ interface BookingWithRoom {
   status: string;
   created_at: string;
   updated_at: string;
-  room: Room | null;
+  room: {
+    id: string;
+    number: string;
+    room_type: string;
+    status: string;
+    price: number | string; // <--- ADDED PRICE FIELD
+  } | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -63,6 +70,29 @@ const statusLabels: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+// Helper function to get status badge for a booking
+const getBookingStatusBadge = (booking: BookingWithRoom) => {
+  const status = booking.status.toLowerCase();
+  
+  // Mapping that keeps it professional for the guest
+  const guestConfig: Record<string, { label: string, className: string }> = {
+    upcoming: { label: "Upcoming", className: "bg-blue-500/10 text-blue-400 border-blue-500/30" },
+    checked_in: { label: "Checked In", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" },
+    checked_out: { label: "Checked Out", className: "bg-slate-500/10 text-slate-400 border-slate-500/30" },
+    cancelled: { label: "Cancelled", className: "bg-red-500/10 text-red-400 border-red-500/30" },
+    no_show: { label: "No-Show", className: "bg-slate-500/10 text-slate-400 border-slate-500/30" },
+    overstay: { label: "Checked In", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" }, // Simple "Checked In" for guests
+  };
+
+  const config = guestConfig[status] || guestConfig.upcoming;
+
+  return {
+    className: config.className,
+    label: config.label,
+    showIcon: false, // No warning icons for guests
+  };
+};
+
 export default function GuestBookingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -73,8 +103,6 @@ export default function GuestBookingsPage() {
   );
 
   // Fetch guest's bookings
-  // Note: Backend automatically filters by current_user.id (guest_id)
-  // Guests can only see their own bookings via /guest/bookings endpoint
   const {
     data: bookings = [],
     isLoading,
@@ -254,25 +282,42 @@ export default function GuestBookingsPage() {
                           {item.reference}
                         </span>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={statusColors[item.status]}
-                      >
-                        {statusLabels[item.status]}
-                      </Badge>
+                      {(() => {
+                        const badgeConfig = getBookingStatusBadge(item);
+                        return (
+                          <Badge
+                            variant="outline"
+                            className={badgeConfig.className}
+                          >
+                            {badgeConfig.showIcon && (
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                            )}
+                            {badgeConfig.label}
+                          </Badge>
+                        );
+                      })()}
                     </div>
 
-                    {/* Room Info */}
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <Home className="h-4 w-4 text-slate-500" />
-                      <span>
-                        Room {item.room?.number || "N/A"}
-                        {item.room?.room_type && (
-                          <span className="text-slate-500 ml-1">
-                            ({item.room.room_type})
-                          </span>
-                        )}
-                      </span>
+                    {/* Room Info - UPDATED with Price */}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-slate-300">
+                        <Home className="h-4 w-4 text-slate-500" />
+                        <span>
+                          Room {item.room?.number || "N/A"}
+                          {item.room?.room_type && (
+                            <span className="text-slate-500 ml-1">
+                              ({item.room.room_type})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                        {/* Price Display */}
+                         {item.room?.price && (
+                           <div className="ml-6 text-sm text-emerald-400 font-medium">
+                             {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(Number(item.room.price))}
+                             <span className="text-slate-500 text-xs ml-1 font-normal">/ night</span>
+                           </div>
+                         )}
                     </div>
 
                     {/* Dates */}
@@ -401,4 +446,3 @@ export default function GuestBookingsPage() {
     </div>
   );
 }
-

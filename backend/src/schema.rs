@@ -37,6 +37,18 @@ diesel::table! {
         created_by_user_id -> Nullable<Uuid>,
         #[max_length = 10]
         creation_source -> Varchar,
+        price -> Numeric,
+    }
+}
+
+diesel::table! {
+    guest_interaction_notes (id) {
+        id -> Uuid,
+        guest_id -> Uuid,
+        admin_id -> Uuid,
+        note -> Text,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -53,6 +65,7 @@ diesel::table! {
         status -> RoomStatus,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        price -> Numeric,
     }
 }
 
@@ -73,10 +86,15 @@ diesel::table! {
         email -> Nullable<Varchar>,
         #[max_length = 100]
         full_name -> Nullable<Varchar>,
+        #[max_length = 20]
+        phone -> Nullable<Varchar>,
+        #[max_length = 50]
+        id_number -> Nullable<Varchar>,
+        deactivated_at -> Nullable<Timestamptz>,
     }
 }
 
 diesel::joinable!(bookings -> rooms (room_id));
 diesel::joinable!(bookings -> users (created_by_user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(bookings, rooms, users,);
+diesel::allow_tables_to_appear_in_same_query!(bookings, guest_interaction_notes, rooms, users,);

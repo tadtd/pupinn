@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   createContext,
   useContext,
   useState,
@@ -74,7 +74,7 @@ export function GuestAuthProvider({ children }: GuestAuthProviderProps) {
     logoutGuest();
     setToken(null);
     setUser(null);
-    router.push("/login");
+    router.push("/guest/login");
   }, [router]);
 
   const refreshUser = useCallback(async () => {
@@ -122,4 +122,34 @@ export function useGuestAuth(): GuestAuthContextType {
     throw new Error("useGuestAuth must be used within a GuestAuthProvider");
   }
   return context;
+}
+
+// HOC for protected guest routes
+export function withAuth<P extends object>(
+  WrappedComponent: React.ComponentType<P>
+) {
+  return function ProtectedRoute(props: P) {
+    const { isAuthenticated, isLoading } = useGuestAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      if (!isLoading && !isAuthenticated) {
+        router.push("/guest/login");
+      }
+    }, [isLoading, isAuthenticated, router]);
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (!isAuthenticated) {
+      return null;
+    }
+
+    return <WrappedComponent {...props} />;
+  };
 }

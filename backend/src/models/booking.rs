@@ -4,6 +4,7 @@ use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use bigdecimal::BigDecimal;
 use crate::schema::bookings;
 
 use super::Room;
@@ -18,10 +19,12 @@ pub enum BookingStatus {
     CheckedIn,
     CheckedOut,
     Cancelled,
+    NoShow,
+    Overstay,
 }
 
 /// Booking model representing a guest reservation
-#[derive(Debug, Clone, Queryable, Identifiable, Selectable, Associations, Serialize)]
+#[derive(Debug, Clone, Queryable, Identifiable, Associations, Serialize, Selectable)]
 #[diesel(table_name = bookings)]
 #[diesel(belongs_to(Room))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -39,6 +42,8 @@ pub struct Booking {
     pub created_by_user_id: Option<Uuid>,
     /// Source of booking creation: 'staff' or 'guest'
     pub creation_source: String,
+    /// Booking price/revenue
+    pub price: BigDecimal,
 }
 
 /// New booking for insertion
@@ -52,6 +57,7 @@ pub struct NewBooking<'a> {
     pub check_out_date: NaiveDate,
     pub created_by_user_id: Option<Uuid>,
     pub creation_source: &'a str,
+    pub price: BigDecimal,
 }
 
 /// Booking update changeset
@@ -62,6 +68,7 @@ pub struct UpdateBooking {
     pub check_in_date: Option<NaiveDate>,
     pub check_out_date: Option<NaiveDate>,
     pub status: Option<BookingStatus>,
+    pub price: Option<BigDecimal>,
 }
 
 /// Booking with room details for API responses
@@ -79,8 +86,15 @@ impl BookingStatus {
             // Upcoming can go to checked_in or cancelled
             (BookingStatus::Upcoming, BookingStatus::CheckedIn) => true,
             (BookingStatus::Upcoming, BookingStatus::Cancelled) => true,
-            // CheckedIn can only go to checked_out
+            (BookingStatus::Upcoming, BookingStatus::NoShow) => true, // Automatic via handle_stale_bookings
+            // CheckedIn can go to checked_out
             (BookingStatus::CheckedIn, BookingStatus::CheckedOut) => true,
+            (BookingStatus::CheckedIn, BookingStatus::Overstay) => true, // Automatic via handle_stale_bookings
+            // NoShow can be checked in (late check-in) or cancelled
+            (BookingStatus::NoShow, BookingStatus::CheckedIn) => true,
+            (BookingStatus::NoShow, BookingStatus::Cancelled) => true,
+            // Overstay can be checked out
+            (BookingStatus::Overstay, BookingStatus::CheckedOut) => true,
             // CheckedOut and Cancelled are terminal states
             (BookingStatus::CheckedOut, _) => false,
             (BookingStatus::Cancelled, _) => false,
@@ -94,5 +108,23 @@ impl BookingStatus {
     /// Check if this is a terminal state
     pub fn is_terminal(&self) -> bool {
         matches!(self, BookingStatus::CheckedOut | BookingStatus::Cancelled)
+    }
+
+    /// Check if this status represents an active booking (room is occupied or should be)
+    pub fn is_active(&self) -> bool {
+        matches!(
+            self,
+            BookingStatus::CheckedIn | BookingStatus::Overstay
+        )
+    }
+
+    /// Check if this status blocks room availability
+    pub fn blocks_availability(&self) -> bool {
+        matches!(
+            self,
+            BookingStatus::Upcoming
+                | BookingStatus::CheckedIn
+                | BookingStatus::Overstay
+        )
     }
 }

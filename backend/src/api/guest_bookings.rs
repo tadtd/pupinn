@@ -24,6 +24,8 @@ pub struct CreateGuestBookingRequest {
     pub room_id: Uuid,
     pub check_in_date: NaiveDate,
     pub check_out_date: NaiveDate,
+    #[serde(default)]
+    pub price: Option<bigdecimal::BigDecimal>,
 }
 
 /// Query parameters for listing bookings
@@ -79,6 +81,7 @@ pub async fn create_booking(
         request.room_id,
         request.check_in_date,
         request.check_out_date,
+        request.price,
     )?;
 
     Ok((StatusCode::CREATED, Json(booking)))

@@ -1,7 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
-import { Calendar, User, LogIn, LogOut, X } from "lucide-react";
+import { format, startOfDay, isBefore, parseISO } from "date-fns";
+import { Calendar, User, LogIn, LogOut, X, AlertTriangle, Clock } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export interface BookingWithRoom {
     number: string;
     room_type: string;
     status: string;
+    price: string | number; // Ensure this matches your backend response
   } | null;
 }
 
@@ -45,8 +46,50 @@ interface BookingListProps {
   onCheckIn?: (bookingId: string) => void;
   onCheckOut?: (bookingId: string) => void;
   onCancel?: (bookingId: string) => void;
-  basePath?: string; // Base path for booking detail links (e.g., "/staff/admin/bookings" or "/staff/receptionist/bookings")
+  basePath?: string;
 }
+
+// --- NEW COMPONENT: Handles Dynamic Staff Alerts ---
+const StaffStatusBadge = ({ booking }: { booking: BookingWithRoom }) => {
+  const today = startOfDay(new Date());
+  const checkInDate = startOfDay(parseISO(booking.check_in_date));
+  const checkOutDate = startOfDay(parseISO(booking.check_out_date));
+  
+  // 1. Alert: Overstay 
+  if (booking.status === "checked_in" && isBefore(checkOutDate, today)) {
+    return (
+      <Badge variant="destructive" className="bg-red-600 animate-pulse flex items-center gap-1 w-fit">
+        <AlertTriangle className="h-3 w-3" />
+        Overstay
+      </Badge>
+    );
+  }
+
+  // 2. Alert: No-Show 
+  if (booking.status === "upcoming" && isBefore(checkInDate, today)) {
+    return (
+      <Badge variant="destructive" className="bg-orange-600 flex items-center gap-1 w-fit">
+        <Clock className="h-3 w-3" />
+        No-Show
+      </Badge>
+    );
+  }
+
+  // 3. Normal Status Mapping
+  const variants: Record<string, { className: string; label: string }> = {
+    upcoming: { className: "bg-blue-500 hover:bg-blue-600", label: "Upcoming" },
+    checked_in: { className: "bg-emerald-500 hover:bg-emerald-600", label: "Checked In" },
+    checked_out: { className: "bg-slate-500 hover:bg-slate-600", label: "Checked Out" },
+    cancelled: { className: "bg-red-500 hover:bg-red-600", label: "Cancelled" },
+    no_show: { className: "bg-orange-600 hover:bg-orange-700", label: "No-Show" },
+    overstay: { className: "bg-red-600 hover:bg-red-700 animate-pulse", label: "Overstay" },
+  };
+
+  const variant = variants[booking.status] || { className: "bg-slate-500", label: booking.status };
+  
+  return <Badge className={`${variant.className} text-white`}>{variant.label}</Badge>;
+};
+// -------------------------------------------------
 
 export function BookingList({
   bookings,
@@ -55,31 +98,14 @@ export function BookingList({
   onCheckIn,
   onCheckOut,
   onCancel,
-  basePath = "/bookings", // Default to old path for backward compatibility
+  basePath = "/bookings",
 }: BookingListProps) {
-  const getStatusBadge = (status: BookingStatus) => {
-    const variants: Record<BookingStatus, { className: string; label: string }> =
-      {
-        upcoming: {
-          className: "bg-blue-500 hover:bg-blue-600",
-          label: "Upcoming",
-        },
-        checked_in: {
-          className: "bg-emerald-500 hover:bg-emerald-600",
-          label: "Checked In",
-        },
-        checked_out: {
-          className: "bg-slate-500 hover:bg-slate-600",
-          label: "Checked Out",
-        },
-        cancelled: {
-          className: "bg-red-500 hover:bg-red-600",
-          label: "Cancelled",
-        },
-      };
-    const variant = variants[status];
-    return <Badge className={variant.className}>{variant.label}</Badge>;
-  };
+
+  const currencyFormat = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  });
 
   if (isLoading) {
     return (
@@ -147,9 +173,20 @@ export function BookingList({
                     {booking.guest_name}
                   </div>
                 </TableCell>
+                {/* --- UPDATED: Room Cell with Price --- */}
                 <TableCell className="text-slate-100">
-                  {booking.room ? `Room ${booking.room.number}` : "-"}
+                  {booking.room ? (
+                    <div className="flex flex-col">
+                      <span className="font-medium">Room {booking.room.number}</span>
+                      <span className="text-xs text-slate-400">
+                        {currencyFormat.format(Number(booking.room.price))} <span className="opacity-50">/night</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-500">-</span>
+                  )}
                 </TableCell>
+                {/* ------------------------------------ */}
                 <TableCell className="text-slate-300">
                   {format(new Date(booking.check_in_date), "MMM d, yyyy")}
                 </TableCell>
@@ -168,7 +205,9 @@ export function BookingList({
                     {booking.creation_source === "guest" ? "Guest" : "Staff"}
                   </Badge>
                 </TableCell>
-                <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                <TableCell>
+                  <StaffStatusBadge booking={booking} />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Link href={`${basePath}/${booking.id}`}>
@@ -191,7 +230,7 @@ export function BookingList({
                         Check In
                       </Button>
                     )}
-                    {booking.status === "checked_in" && onCheckOut && (
+                    {(booking.status === "checked_in" || booking.status === "overstay" as BookingStatus) && onCheckOut && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -223,4 +262,3 @@ export function BookingList({
     </Card>
   );
 }
-

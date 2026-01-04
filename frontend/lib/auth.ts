@@ -17,7 +17,7 @@ export function isAuthRoute(pathname: string | null): boolean {
 export interface User {
   id: string;
   username: string;
-  role: 'admin' | 'receptionist';
+  role: 'admin' | 'receptionist' | 'cleaner';
 }
 
 export interface LoginResponse {

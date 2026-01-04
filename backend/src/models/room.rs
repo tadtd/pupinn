@@ -3,6 +3,7 @@ use diesel::prelude::*;
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use bigdecimal::BigDecimal;
 
 use crate::schema::rooms;
 use crate::models::UserRole;
@@ -32,7 +33,7 @@ pub enum RoomStatus {
 }
 
 /// Room model representing a hotel room
-#[derive(Debug, Clone, Queryable, Identifiable, Selectable, Serialize)]
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Selectable)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Room {
@@ -42,6 +43,7 @@ pub struct Room {
     pub status: RoomStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub price: BigDecimal,
 }
 
 /// New room for insertion
@@ -50,6 +52,7 @@ pub struct Room {
 pub struct NewRoom<'a> {
     pub number: &'a str,
     pub room_type: RoomType,
+    pub price: BigDecimal,
 }
 
 /// Room update changeset
@@ -58,6 +61,7 @@ pub struct NewRoom<'a> {
 pub struct UpdateRoom {
     pub room_type: Option<RoomType>,
     pub status: Option<RoomStatus>,
+    pub price: Option<BigDecimal>,
 }
 
 impl RoomStatus {

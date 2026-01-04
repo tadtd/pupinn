@@ -1,4 +1,6 @@
 use diesel::prelude::*;
+use bigdecimal::BigDecimal;
+use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::db::DbPool;
@@ -38,7 +40,15 @@ impl RoomService {
             )));
         }
 
-        let new_room = NewRoom { number, room_type };
+        // Set default price based on room type
+        // Default prices in VND (no fractional VND amounts)
+        let price = match room_type {
+            RoomType::Single => BigDecimal::from_str("1000000").unwrap(),
+            RoomType::Double => BigDecimal::from_str("1500000").unwrap(),
+            RoomType::Suite => BigDecimal::from_str("2500000").unwrap(),
+        };
+
+        let new_room = NewRoom { number, room_type, price };
 
         diesel::insert_into(rooms::table)
             .values(&new_room)
@@ -142,7 +152,11 @@ impl RoomService {
             }
         }
 
-        let update = UpdateRoom { room_type, status };
+        let update = UpdateRoom {
+            room_type,
+            status,
+            price: None,
+        };
 
         diesel::update(rooms::table.find(room_id))
             .set(&update)

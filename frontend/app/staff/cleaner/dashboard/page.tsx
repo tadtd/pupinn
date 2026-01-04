@@ -9,6 +9,7 @@ import { RouteGuard } from "@/components/route-guard";
 import { CleanerDashboard } from "@/components/cleaner-dashboard";
 import { getCleanerRooms, updateRoomStatus, getErrorMessage } from "@/lib/api-client";
 import { type Room, type RoomStatus } from "@/lib/validators";
+import { UserRole } from "@/lib/validators";
 
 export default function CleanerDashboardPage() {
   const router = useRouter();
@@ -29,15 +30,27 @@ export default function CleanerDashboardPage() {
   } = useQuery({
     queryKey: ["cleaner-rooms"],
     queryFn: async () => {
-      // Default to dirty rooms
-      const [dirtyRooms, cleaningRooms, availableRooms] = await Promise.all([
+      // FIX: Fetch ALL statuses to get a complete view of the hotel
+      const [dirty, cleaning, available, occupied, maintenance] = await Promise.all([
         getCleanerRooms("dirty"),
         getCleanerRooms("cleaning"),
         getCleanerRooms("available"),
+        getCleanerRooms("occupied"),
+        getCleanerRooms("maintenance"),
       ]);
-      return [...dirtyRooms, ...cleaningRooms, ...availableRooms];
+
+      const allRooms = [
+        ...dirty, 
+        ...cleaning, 
+        ...available, 
+        ...occupied, 
+        ...maintenance
+      ];
+
+      // Sort rooms by room number (e.g., 101, 102, 201) so the view is organized
+      return allRooms.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
     },
-    enabled: isAuthenticated && user?.role === "cleaner",
+    enabled: isAuthenticated && user?.role === UserRole.enum.cleaner,
   });
 
   const updateStatusMutation = useMutation({
@@ -66,17 +79,19 @@ export default function CleanerDashboardPage() {
     );
   }
 
-  if (!isAuthenticated || user?.role !== "cleaner") {
+  if (!isAuthenticated || user?.role !== UserRole.enum.cleaner) {
     return null;
   }
 
   return (
-    <RouteGuard requiredRole="cleaner">
+    <RouteGuard requiredRole={UserRole.enum.cleaner}>
       <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-100">Cleaner Dashboard</h1>
-            <p className="text-slate-400 mt-1">Manage room cleaning tasks</p>
+            <p className="text-slate-400 mt-1">
+              Overview of all rooms and their current status
+            </p>
           </div>
 
           <CleanerDashboard
@@ -91,4 +106,3 @@ export default function CleanerDashboardPage() {
     </RouteGuard>
   );
 }
-

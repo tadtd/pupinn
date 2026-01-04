@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use chrono::NaiveDate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::AppState;
@@ -20,6 +20,8 @@ pub struct CreateBookingDto {
     pub room_id: Uuid,
     pub check_in_date: NaiveDate,
     pub check_out_date: NaiveDate,
+    #[serde(default)]
+    pub price: Option<bigdecimal::BigDecimal>,
 }
 
 /// Update booking request DTO
@@ -58,6 +60,7 @@ pub async fn create_booking(
         payload.room_id,
         payload.check_in_date,
         payload.check_out_date,
+        payload.price,
     )?;
     Ok((StatusCode::CREATED, Json(booking)))
 }
@@ -67,12 +70,21 @@ pub async fn list_bookings(
     State(state): State<AppState>,
     Query(query): Query<ListBookingsQuery>,
 ) -> Result<impl IntoResponse, AppError> {
-    let booking_service = BookingService::new(state.pool);
+    let booking_service = BookingService::new(state.pool.clone());
+    
+    // Auto-update statuses based on today's date before fetching the list
+    let mut conn = state.pool.get().map_err(|e| AppError::DatabaseError(e.to_string()))?;
+    booking_service.handle_stale_bookings(&mut conn)
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    // let (no_show_count, overstay_count) = booking_service.handle_stale_bookings(&mut conn)
+    //     .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
     let bookings = booking_service.list_bookings(
-        query.status,
+        query.status, 
         query.guest_name.as_deref(),
-        query.from_date,
-        query.to_date,
+        query.from_date, 
+        query.to_date
     )?;
     Ok((StatusCode::OK, Json(bookings)))
 }
@@ -149,13 +161,21 @@ pub async fn check_in(
     Ok((StatusCode::OK, Json(booking)))
 }
 
+/// Check out request DTO
+#[derive(Debug, Deserialize)]
+pub struct CheckOutDto {
+    #[serde(default)]
+    pub confirm_early: bool,
+}
+
 /// Check out a guest
 pub async fn check_out(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
+    Json(payload): Json<CheckOutDto>,
 ) -> Result<impl IntoResponse, AppError> {
     let booking_service = BookingService::new(state.pool);
-    let booking = booking_service.check_out(id)?;
+    let booking = booking_service.check_out(id, payload.confirm_early)?;
     Ok((StatusCode::OK, Json(booking)))
 }
 
@@ -169,3 +189,39 @@ pub async fn cancel(
     Ok((StatusCode::OK, Json(booking)))
 }
 
+/// Sync booking statuses response
+#[derive(Debug, Serialize)]
+pub struct SyncBookingStatusesResponse {
+    pub message: String,
+    pub no_show_count: Option<usize>,
+    pub overstay_count: Option<usize>,
+}
+
+/// Sync booking statuses
+/// 
+/// Updates stale bookings:
+/// - 'Upcoming' bookings with check_in_date before today → 'NoShow'
+/// - 'CheckedIn' bookings with check_out_date before today → 'Overstay'
+pub async fn sync_booking_statuses(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, AppError> {
+    let booking_service = BookingService::new(state.pool.clone());
+    
+    let mut conn = state.pool
+        .get()
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    let (no_show_count, overstay_count) = booking_service
+        .handle_stale_bookings(&mut conn)
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(SyncBookingStatusesResponse {
+            message: "Booking statuses synchronized successfully".to_string(),
+            // Remove 'as i32' to match the expected usize type
+            no_show_count: Some(no_show_count), 
+            overstay_count: Some(overstay_count),
+        }),
+    ))
+}
