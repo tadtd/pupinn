@@ -62,7 +62,7 @@ export default function GuestNewBookingPage() {
             },
           }
         );
-        // Filter only available rooms and map to Room type
+        // Filter only available rooms and map to Room type (include price)
         return response.data
           .filter((room) => room.is_available)
           .map((room) => ({
@@ -70,6 +70,7 @@ export default function GuestNewBookingPage() {
             number: room.number,
             room_type: room.room_type as "single" | "double" | "suite",
             status: room.status as "available" | "occupied" | "maintenance",
+            price: (room as any).price ?? undefined,
             created_at: "",
             updated_at: "",
           }));

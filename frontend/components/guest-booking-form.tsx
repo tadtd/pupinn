@@ -80,6 +80,23 @@ export function GuestBookingForm({
     await onBook(data);
   };
 
+  const selectedRoom = availableRooms.find((r) => r.id === selectedRoomId) ?? null;
+  const nights = (() => {
+    if (!checkInDate || !checkOutDate) return 0;
+    const d1 = new Date(checkInDate + "T00:00:00");
+    const d2 = new Date(checkOutDate + "T00:00:00");
+    const diff = (d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.round(diff));
+  })();
+
+  const pricePerNight = selectedRoom?.price ? parseFloat(selectedRoom.price) : null;
+  const totalPrice = pricePerNight != null ? pricePerNight * nights : null;
+  const currencyFormat = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  });
+
   const getRoomTypeBadgeColor = (roomType: string) => {
     switch (roomType) {
       case "single":
@@ -210,6 +227,12 @@ export function GuestBookingForm({
                         >
                           {room.room_type}
                         </Badge>
+                        {room.price && (
+                          <div className="mt-2 text-sm text-emerald-400 font-medium">
+                            {currencyFormat.format(Number(room.price))}
+                            <span className="text-slate-500 text-xs ml-2">/ night</span>
+                          </div>
+                        )}
                       </div>
                       {selectedRoomId === room.id && (
                         <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center">
@@ -272,6 +295,19 @@ export function GuestBookingForm({
                 </span>
               </div>
             </div>
+
+            {pricePerNight != null && (
+              <div className="text-sm">
+                <div>
+                  <span className="text-slate-400">Price (per night):</span>
+                  <span className="ml-2 text-slate-100">{currencyFormat.format(pricePerNight)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Total ({nights} night{nights !== 1 ? "s" : ""}):</span>
+                  <span className="ml-2 text-slate-100">{currencyFormat.format(totalPrice ?? 0)}</span>
+                </div>
+              </div>
+            )}
 
             <Button
               type="submit"

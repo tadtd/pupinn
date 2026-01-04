@@ -129,7 +129,8 @@ export default function ReceptionistBookingsPage() {
 
   const checkOutMutation = useMutation({
     mutationFn: async (bookingId: string) => {
-      const response = await apiClient.post(`/bookings/${bookingId}/check-out`);
+      // POST an explicit JSON body so axum's JSON extractor can deserialize
+      const response = await apiClient.post(`/bookings/${bookingId}/check-out`, { confirm_early: false });
       return response.data;
     },
     onSuccess: () => {

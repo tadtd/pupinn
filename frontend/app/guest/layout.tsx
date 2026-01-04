@@ -32,11 +32,15 @@ export default function GuestLayout({
     }
   }, [isMounted, isLoginPage, router]);
 
+  const hasToken = !!getGuestToken();
+
   return (
     <GuestAuthProvider>
-      {/*  decide purely on visual layout */}
-      {(!isMounted || isLoginPage) ? (
-        // Render simple children for login page or loading state
+      {/* Render login page normally; for other pages show full dashboard layout.
+          Use either mount state or presence of token so immediate navigations
+          after login (same-window) render the full layout without requiring a
+          manual refresh. */}
+      {isLoginPage ? (
         <>{children}</>
       ) : (
         // Render full dashboard layout for authenticated pages

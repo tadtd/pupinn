@@ -81,7 +81,7 @@ export const RoomSchema = z.object({
   number: z.string(),
   room_type: RoomType,
   status: RoomStatus,
-  price: z.string().optional(),
+  price: z.union([z.string(), z.number()]).optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });

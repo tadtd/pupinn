@@ -46,9 +46,10 @@ export function FinancialReport({
 
   const formatCurrency = (value: string) => {
     const num = parseFloat(value);
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("vi-VN", {
       style: "currency",
-      currency: "USD",
+      currency: "VND",
+      maximumFractionDigits: 0,
     }).format(num);
   };
 
@@ -138,7 +139,7 @@ export function FinancialReport({
               <div>
                 <p className="text-sm text-slate-400 mb-1">Total Revenue</p>
                 <p className="text-2xl font-bold text-slate-100">
-                  {formatCurrency(totalRevenue.toFixed(2))}
+                  {formatCurrency(totalRevenue.toFixed(0))}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-emerald-400" />
