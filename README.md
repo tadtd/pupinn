@@ -38,7 +38,7 @@ A modern hotel management system built as a student project for an Introduction 
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose** (for database)
+- **Docker** and **Docker Compose** (for database) and Postgres 16.
 - **Rust** 1.75+ with Cargo
 - **Node.js** 20+ with pnpm
 - **Diesel CLI** (`cargo install diesel_cli --no-default-features --features postgres`)

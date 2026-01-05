@@ -686,10 +686,11 @@ impl BookingService {
                 .first(conn)
                 .map_err(|_| diesel::result::Error::NotFound)?;
 
-            if current_room.status != RoomStatus::Occupied {
+            // Check booking status instead of room status - the booking must be checked in
+            if booking.status != BookingStatus::CheckedIn {
                 return Err(app_error_to_diesel(AppError::ValidationError(format!(
-                    "Room {} is not currently occupied.",
-                    current_room.number
+                    "Booking must be checked in before checking out. Current status: {:?}",
+                    booking.status
                 ))));
             }
 
