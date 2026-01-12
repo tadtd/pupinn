@@ -1,0 +1,3 @@
+-- This file should undo anything in `up.sql`
+-- Note: PostgreSQL doesn't support removing enum values directly
+-- To fully revert, you would need to recreate the enum type

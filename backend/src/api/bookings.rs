@@ -193,14 +193,12 @@ pub async fn cancel(
 #[derive(Debug, Serialize)]
 pub struct SyncBookingStatusesResponse {
     pub message: String,
-    pub no_show_count: Option<usize>,
     pub overstay_count: Option<usize>,
 }
 
 /// Sync booking statuses
 /// 
 /// Updates stale bookings:
-/// - 'Upcoming' bookings with check_in_date before today → 'NoShow'
 /// - 'CheckedIn' bookings with check_out_date before today → 'Overstay'
 pub async fn sync_booking_statuses(
     State(state): State<AppState>,
@@ -211,7 +209,7 @@ pub async fn sync_booking_statuses(
         .get()
         .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-    let (no_show_count, overstay_count) = booking_service
+    let (_no_show_count, overstay_count) = booking_service
         .handle_stale_bookings(&mut conn)
         .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
@@ -219,8 +217,6 @@ pub async fn sync_booking_statuses(
         StatusCode::OK,
         Json(SyncBookingStatusesResponse {
             message: "Booking statuses synchronized successfully".to_string(),
-            // Remove 'as i32' to match the expected usize type
-            no_show_count: Some(no_show_count), 
             overstay_count: Some(overstay_count),
         }),
     ))

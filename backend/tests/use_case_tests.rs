@@ -70,11 +70,10 @@ mod admin_room_management {
             BookingStatus::CheckedIn,
             BookingStatus::CheckedOut,
             BookingStatus::Cancelled,
-            BookingStatus::NoShow,
             BookingStatus::Overstay,
         ];
 
-        assert_eq!(statuses.len(), 6, "Should have 6 booking statuses");
+        assert_eq!(statuses.len(), 5, "Should have 5 booking statuses");
     }
 }
 
@@ -150,12 +149,6 @@ mod receptionist_check_in_out {
         assert!(RoomStatus::Occupied.can_transition_to(RoomStatus::Dirty));
     }
 
-    #[test]
-    fn test_noshow_can_late_checkin() {
-        // Use case: Control Check-In / Check-Out
-        // NoShow booking can still be checked in (late arrival)
-        assert!(BookingStatus::NoShow.can_transition_to(BookingStatus::CheckedIn));
-    }
 }
 
 mod receptionist_reservations {
@@ -393,9 +386,4 @@ mod booking_availability {
         assert!(!BookingStatus::CheckedOut.blocks_availability());
     }
 
-    #[test]
-    fn test_noshow_does_not_block() {
-        // NoShow doesn't block (room can be rebooked)
-        assert!(!BookingStatus::NoShow.blocks_availability());
-    }
 }

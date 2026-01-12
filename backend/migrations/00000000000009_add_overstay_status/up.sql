@@ -1,9 +1,7 @@
--- Your SQL goes here
--- 1. Expand the enum to include management statuses
-ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'no_show';
+-- Add overstay status to booking_status enum
 ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'overstay';
 
--- 2. Normalize existing data to snake_case so Rust can read it
+-- Normalize existing data to snake_case so Rust can read it
 -- This fixes the "invalid input value" error from your screenshot
 UPDATE bookings 
 SET status = 'checked_in'::booking_status 

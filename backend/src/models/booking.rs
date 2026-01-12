@@ -19,7 +19,6 @@ pub enum BookingStatus {
     CheckedIn,
     CheckedOut,
     Cancelled,
-    NoShow,
     Overstay,
 }
 
@@ -86,13 +85,9 @@ impl BookingStatus {
             // Upcoming can go to checked_in or cancelled
             (BookingStatus::Upcoming, BookingStatus::CheckedIn) => true,
             (BookingStatus::Upcoming, BookingStatus::Cancelled) => true,
-            (BookingStatus::Upcoming, BookingStatus::NoShow) => true, // Automatic via handle_stale_bookings
             // CheckedIn can go to checked_out
             (BookingStatus::CheckedIn, BookingStatus::CheckedOut) => true,
             (BookingStatus::CheckedIn, BookingStatus::Overstay) => true, // Automatic via handle_stale_bookings
-            // NoShow can be checked in (late check-in) or cancelled
-            (BookingStatus::NoShow, BookingStatus::CheckedIn) => true,
-            (BookingStatus::NoShow, BookingStatus::Cancelled) => true,
             // Overstay can be checked out
             (BookingStatus::Overstay, BookingStatus::CheckedOut) => true,
             // CheckedOut and Cancelled are terminal states

@@ -33,9 +33,10 @@ impl GuestService {
             .get()
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        let search_pattern = format!("%{}%", query);
+        // Use prefix matching instead of substring matching
+        let search_pattern = format!("{}%", query);
 
-        // Search in guest users (role = 'guest')
+        // Search in guest users (role = 'guest') - all guests from past to now
         let guests: Vec<User> = users::table
             .filter(users::role.eq(UserRole::Guest))
             .filter(
@@ -49,10 +50,10 @@ impl GuestService {
             .load(&mut conn)
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        // Also search by booking reference if query looks like a reference
+        // Also search by booking reference if query looks like a reference (prefix match)
         let mut guests_by_booking = Vec::new();
-        if query.len() >= 10 {
-            // Booking references are typically longer (e.g., BK-20250127-XXXX)
+        if query.len() >= 3 {
+            // Booking references can be searched with prefix (e.g., "BK-2025" matches "BK-20250127-XXXX")
             let bookings_with_reference: Vec<Booking> = bookings::table
                 .filter(bookings::reference.ilike(&search_pattern))
                 .load(&mut conn)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Search, User, Mail, Phone, CreditCard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,9 +27,10 @@ export function GuestSearch({ onSelectGuest }: GuestSearchProps) {
   const [results, setResults] = useState<GuestResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setError("Please enter a search query");
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setResults([]);
+      setError(null);
       return;
     }
 
@@ -38,17 +39,42 @@ export function GuestSearch({ onSelectGuest }: GuestSearchProps) {
 
     try {
       const { searchGuests } = await import("@/lib/api/guests");
-      const response = await searchGuests(searchQuery);
+      const response = await searchGuests(query);
       setResults(response.guests);
       if (response.guests.length === 0) {
         setError("No guests found matching your search");
+      } else {
+        setError(null);
       }
     } catch (err: unknown) {
       setError("Failed to search guests. Please try again.");
       console.error("Search error:", err);
+      setResults([]);
     } finally {
       setIsSearching(false);
     }
+  }, []);
+
+  // Debounced search as user types (prefix matching)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        performSearch(searchQuery.trim());
+      } else if (searchQuery.trim().length === 0) {
+        setResults([]);
+        setError(null);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, performSearch]);
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      setError("Please enter a search query");
+      return;
+    }
+    performSearch(searchQuery.trim());
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -67,7 +93,7 @@ export function GuestSearch({ onSelectGuest }: GuestSearchProps) {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Search by name, email, phone, ID number, or booking reference..."
+                placeholder="Type to search by prefix (name, email, phone, ID number, or booking reference)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}

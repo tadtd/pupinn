@@ -43,7 +43,6 @@ pub fn apply_stale_statuses_fix(pool: &DbPool) {
             // SQL mirrors the migration that normalizes booking_status values
             // and ensures the enum contains required values.
             let sql = r#"
-                ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'no_show';
                 ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'overstay';
 
                 UPDATE bookings

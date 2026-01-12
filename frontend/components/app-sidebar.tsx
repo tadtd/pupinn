@@ -104,12 +104,52 @@ const RECEPTIONIST_NAVIGATION = [
 export function AppSidebar() {
   const pathname = usePathname();
   // extracting isCleaner if you added it to AuthProvider, otherwise check role manually
-  const { user, logout, isAdmin, isAuthenticated } = useAuth();
+  const { user, logout, isAdmin, isAuthenticated, isLoading } = useAuth();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   
   const isCleaner = user?.role === "cleaner";
   const isReceptionist = user?.role === "receptionist";
+
+  // Show skeleton sidebar while loading
+  if (isLoading) {
+    return (
+      <Sidebar className="h-screen sticky top-0 border-r-0 bg-linear-to-br from-slate-950 via-slate-900 to-slate-950/90">
+        <SidebarHeader className="border-transparent px-4 pt-6 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 animate-pulse" />
+            {!isCollapsed && (
+              <div className="space-y-1">
+                <div className="w-16 h-3 bg-slate-800 rounded animate-pulse" />
+                <div className="w-24 h-5 bg-slate-800 rounded animate-pulse" />
+              </div>
+            )}
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="px-4">
+          <SidebarGroup>
+            {!isCollapsed && <div className="w-16 h-3 bg-slate-800 rounded animate-pulse mb-2" />}
+            <SidebarMenu>
+              {[1, 2, 3, 4].map((i) => (
+                <SidebarMenuItem key={i}>
+                  <div className={cn(
+                    "flex items-center gap-2 py-2",
+                    isCollapsed ? "px-2 justify-center" : "px-3"
+                  )}>
+                    <div className="w-4 h-4 bg-slate-800 rounded animate-pulse" />
+                    {!isCollapsed && <div className="w-20 h-4 bg-slate-800 rounded animate-pulse" />}
+                  </div>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="border-transparent">
+          <div className="w-full h-20 bg-slate-800/50 rounded-lg animate-pulse" />
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
 
   // Select which menu to show based on role
   let menuToRender = NAVIGATION;

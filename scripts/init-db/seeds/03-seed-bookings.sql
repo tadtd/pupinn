@@ -6,7 +6,17 @@ DO $$
 BEGIN
   RAISE NOTICE 'Starting booking seed data...';
   
-  -- Check if any sample bookings already exist
+  -- Update existing bookings with new guest names, or create if they don't exist
+  -- First, update existing bookings
+  UPDATE bookings SET guest_name = 'Bao-Huy Pham' WHERE reference = 'SEED-001';
+  UPDATE bookings SET guest_name = 'Tien-Dat Do' WHERE reference = 'SEED-002';
+  UPDATE bookings SET guest_name = 'Tien-Dat Dam' WHERE reference = 'SEED-003';
+  UPDATE bookings SET guest_name = 'Quang-De Tran' WHERE reference = 'SEED-004';
+  UPDATE bookings SET guest_name = 'Xuan-Dung Nguyen' WHERE reference = 'SEED-005';
+  UPDATE bookings SET guest_name = 'Minh-Tuan Nguyen-Ngoc' WHERE reference = 'SEED-006';
+  UPDATE bookings SET guest_name = 'Thanh-Trinh Nguyen' WHERE reference = 'SEED-007';
+  
+  -- Then create if they don't exist
   IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference LIKE 'SEED-%') THEN
     
     -- Booking 1: Checked-in guest in Room 103 (single, occupied)
@@ -17,7 +27,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000001'::uuid,
       'SEED-001',
-      'Jane Smith',
+      'Bao-Huy Pham',
       '10000000-0000-0000-0000-000000000103'::uuid,  -- Room 103 (occupied)
       CURRENT_DATE - INTERVAL '2 days',
       CURRENT_DATE + INTERVAL '2 days',
@@ -37,7 +47,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000002'::uuid,
       'SEED-002',
-      'Michael Chen',
+      'Tien-Dat Do',
       '10000000-0000-0000-0000-000000000204'::uuid,  -- Room 204 (occupied)
       CURRENT_DATE - INTERVAL '1 day',
       CURRENT_DATE + INTERVAL '3 days',
@@ -57,7 +67,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000003'::uuid,
       'SEED-003',
-      'Sarah Williams',
+      'Tien-Dat Dam',
       '10000000-0000-0000-0000-000000000303'::uuid,  -- Room 303 (occupied)
       CURRENT_DATE,
       CURRENT_DATE + INTERVAL '4 days',
@@ -76,7 +86,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000004'::uuid,
       'SEED-004',
-      'John Doe',
+      'Quang-De Tran',
       '10000000-0000-0000-0000-000000000101'::uuid,  -- Room 101 (available)
       CURRENT_DATE + INTERVAL '3 days',
       CURRENT_DATE + INTERVAL '6 days',
@@ -95,7 +105,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000005'::uuid,
       'SEED-005',
-      'Alice Brown',
+      'Xuan-Dung Nguyen',
       '10000000-0000-0000-0000-000000000301'::uuid,  -- Room 301 (available)
       CURRENT_DATE + INTERVAL '10 days',
       CURRENT_DATE + INTERVAL '14 days',
@@ -114,7 +124,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000006'::uuid,
       'SEED-006',
-      'Bob Johnson',
+      'Minh-Tuan Nguyen-Ngoc',
       '10000000-0000-0000-0000-000000000201'::uuid,  -- Room 201 (available)
       CURRENT_DATE - INTERVAL '5 days',
       CURRENT_DATE - INTERVAL '2 days',
@@ -133,7 +143,7 @@ BEGIN
     ) VALUES (
       '20000000-0000-0000-0000-000000000007'::uuid,
       'SEED-007',
-      'Charlie Davis',
+      'Thanh-Trinh Nguyen',
       '10000000-0000-0000-0000-000000000402'::uuid,  -- Room 402 (available)
       CURRENT_DATE + INTERVAL '7 days',
       CURRENT_DATE + INTERVAL '9 days',

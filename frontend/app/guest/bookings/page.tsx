@@ -80,7 +80,6 @@ const getBookingStatusBadge = (booking: BookingWithRoom) => {
     checked_in: { label: "Checked In", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" },
     checked_out: { label: "Checked Out", className: "bg-slate-500/10 text-slate-400 border-slate-500/30" },
     cancelled: { label: "Cancelled", className: "bg-red-500/10 text-red-400 border-red-500/30" },
-    no_show: { label: "No-Show", className: "bg-slate-500/10 text-slate-400 border-slate-500/30" },
     overstay: { label: "Checked In", className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" }, // Simple "Checked In" for guests
   };
 

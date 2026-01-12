@@ -1,7 +1,7 @@
 "use client";
 
 import { format, startOfDay, isBefore, parseISO } from "date-fns";
-import { Calendar, User, LogIn, LogOut, X, AlertTriangle, Clock } from "lucide-react";
+import { Calendar, User, LogIn, LogOut, X, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -65,23 +65,12 @@ const StaffStatusBadge = ({ booking }: { booking: BookingWithRoom }) => {
     );
   }
 
-  // 2. Alert: No-Show 
-  if (booking.status === "upcoming" && isBefore(checkInDate, today)) {
-    return (
-      <Badge variant="destructive" className="bg-orange-600 flex items-center gap-1 w-fit">
-        <Clock className="h-3 w-3" />
-        No-Show
-      </Badge>
-    );
-  }
-
-  // 3. Normal Status Mapping
+  // 2. Normal Status Mapping
   const variants: Record<string, { className: string; label: string }> = {
     upcoming: { className: "bg-blue-500 hover:bg-blue-600", label: "Upcoming" },
     checked_in: { className: "bg-emerald-500 hover:bg-emerald-600", label: "Checked In" },
     checked_out: { className: "bg-slate-500 hover:bg-slate-600", label: "Checked Out" },
     cancelled: { className: "bg-red-500 hover:bg-red-600", label: "Cancelled" },
-    no_show: { className: "bg-orange-600 hover:bg-orange-700", label: "No-Show" },
     overstay: { className: "bg-red-600 hover:bg-red-700 animate-pulse", label: "Overstay" },
   };
 
