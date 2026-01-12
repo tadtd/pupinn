@@ -469,6 +469,11 @@ impl AuthService {
             .first(&mut conn)
             .map_err(|_| AppError::Unauthorized("Invalid email or password".to_string()))?;
 
+        // Check if account is deactivated
+        if user.deactivated_at.is_some() {
+            return Err(AppError::Unauthorized("Account is deactivated".to_string()));
+        }
+
         // Verify password
         if !Self::verify_password(&request.password, &user.password_hash)? {
             return Err(AppError::Unauthorized(
@@ -737,6 +742,11 @@ impl AuthService {
             ));
         }
 
+        // Validate single admin constraint if reactivating an admin
+        if employee.role == UserRole::Admin {
+            self.validate_single_admin_constraint(UserRole::Admin, None)?;
+        }
+
         // Reactivate by setting deactivated_at to None
         let rows_affected = diesel::update(users::table.find(employee_id))
             .set(users::deactivated_at.eq(None::<DateTime<Utc>>))
@@ -765,10 +775,17 @@ impl AuthService {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         // Verify employee exists
-        let _employee: User = users::table
+        let employee: User = users::table
             .find(employee_id)
             .first(&mut conn)
             .map_err(|_| AppError::NotFound("Employee not found".to_string()))?;
+
+        // Cannot reset password for deactivated accounts
+        if employee.deactivated_at.is_some() {
+            return Err(AppError::ValidationError(
+                "Cannot reset password for deactivated account".to_string(),
+            ));
+        }
 
         // Hash new password
         let hashed_password = Self::hash_password(&new_password)?;

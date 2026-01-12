@@ -80,8 +80,10 @@ impl RoomStatus {
             // Cleaning workflow transitions
             (RoomStatus::Dirty, RoomStatus::Cleaning) => true, // Cleaner starts work
             (RoomStatus::Dirty, RoomStatus::Available) => true, // Direct completion (allowed but unusual)
+            (RoomStatus::Dirty, RoomStatus::Occupied) => true, // Check-in on dirty room (staff override)
             (RoomStatus::Cleaning, RoomStatus::Available) => true, // Cleaner finishes work
             (RoomStatus::Cleaning, RoomStatus::Dirty) => true, // Rework needed
+            (RoomStatus::Cleaning, RoomStatus::Occupied) => true, // Check-in while cleaning (staff override)
             // Same status is always valid (no-op)
             (a, b) if *a == b => true,
             // All other transitions are invalid

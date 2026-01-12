@@ -108,12 +108,8 @@ pub async fn available_rooms(
     // Check availability for each room
     let mut available_rooms: Vec<AvailableRoom> = Vec::new();
     for room in rooms {
-        // Business rule for booking:
-        // - Only rooms with status `Available` can be considered bookable
-        // - Any other status (Occupied, Dirty, Maintenance, Cleaning) is treated as unavailable
-        let status_unavailable = !matches!(room.status, RoomStatus::Available);
-
-        if status_unavailable {
+        // Maintenance rooms are always unavailable
+        if room.status == RoomStatus::Maintenance {
             available_rooms.push(AvailableRoom {
                 room,
                 is_available: false,
@@ -121,7 +117,8 @@ pub async fn available_rooms(
             continue;
         }
 
-        // For rooms that are currently Available, check booking availability
+        // check_availability handles both booking conflicts and room status checks
+        // (e.g., Occupied rooms can't be booked for same-day check-in, but future bookings are OK)
         let is_available = booking_service.check_availability(
             room.id,
             query.check_in_date,

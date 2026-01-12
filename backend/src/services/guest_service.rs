@@ -128,19 +128,47 @@ impl GuestService {
             .get()
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        // Get all bookings created by this guest
-        let bookings: Vec<Booking> = bookings::table
+        // First, get the guest's full name for matching staff-created bookings
+        let guest: User = users::table
+            .find(guest_id)
+            .first(&mut conn)
+            .map_err(|_| AppError::NotFound("Guest not found".to_string()))?;
+
+        // Get all bookings for this guest:
+        // 1. Bookings created by the guest themselves (created_by_user_id = guest_id)
+        // 2. Bookings created by staff with matching guest_name (for staff-created bookings)
+        let mut all_bookings: Vec<Booking> = bookings::table
             .filter(bookings::created_by_user_id.eq(guest_id))
             .order(bookings::created_at.desc())
             .load(&mut conn)
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        // Also get staff-created bookings that match guest's name (case-insensitive)
+        if let Some(ref full_name) = guest.full_name {
+            let staff_created_bookings: Vec<Booking> = bookings::table
+                .filter(bookings::created_by_user_id.is_null())
+                .filter(bookings::guest_name.ilike(full_name))
+                .order(bookings::created_at.desc())
+                .load(&mut conn)
+                .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+            // Add staff-created bookings, avoiding duplicates
+            for booking in staff_created_bookings {
+                if !all_bookings.iter().any(|b| b.id == booking.id) {
+                    all_bookings.push(booking);
+                }
+            }
+        }
+
+        // Sort by created_at descending
+        all_bookings.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
         // Load room details for each booking
         use crate::models::Room;
         use crate::schema::rooms;
 
         let mut bookings_with_rooms = Vec::new();
-        for booking in bookings {
+        for booking in all_bookings {
             let room: Option<Room> = rooms::table
                 .find(booking.room_id)
                 .first(&mut conn)

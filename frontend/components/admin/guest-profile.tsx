@@ -36,8 +36,14 @@ import {
   type GuestNoteResponse,
   type UpdateGuestRequest,
   type AddGuestNoteRequest,
-  type GuestBooking,
+  type Booking,
+  type Room,
 } from "@/lib/validators";
+
+// BookingWithRoom matches the backend's flattened structure
+interface BookingWithRoom extends Booking {
+  room?: Room;
+}
 import {
   updateGuest,
   getGuestNotes,
@@ -47,7 +53,7 @@ import {
 
 interface GuestProfileProps {
   guest: GuestResponse;
-  bookingHistory: GuestBooking[];
+  bookingHistory: BookingWithRoom[];
   onUpdate: () => void;
 }
 
@@ -299,40 +305,40 @@ export function GuestProfile({
               <TableBody>
                 {bookingHistory.map((booking) => (
                   <TableRow
-                    key={booking.booking.id}
+                    key={booking.id}
                     className="border-slate-700 hover:bg-slate-800/50"
                   >
                     <TableCell className="text-slate-100 font-mono text-sm">
-                      {booking.booking.reference}
+                      {booking.reference}
                     </TableCell>
                     <TableCell className="text-slate-300">
                       {booking.room?.number || "—"}
                     </TableCell>
                     <TableCell className="text-slate-300">
                       {format(
-                        new Date(booking.booking.check_in_date),
+                        new Date(booking.check_in_date),
                         "MMM d, yyyy"
                       )}
                     </TableCell>
                     <TableCell className="text-slate-300">
                       {format(
-                        new Date(booking.booking.check_out_date),
+                        new Date(booking.check_out_date),
                         "MMM d, yyyy"
                       )}
                     </TableCell>
                     <TableCell>
                       <Badge
                         className={
-                          booking.booking.status === "checked_out"
+                          booking.status === "checked_out"
                             ? "bg-emerald-500 hover:bg-emerald-600"
-                            : booking.booking.status === "checked_in"
+                            : booking.status === "checked_in"
                             ? "bg-blue-500 hover:bg-blue-600"
-                            : booking.booking.status === "upcoming"
+                            : booking.status === "upcoming"
                             ? "bg-amber-500 hover:bg-amber-600"
                             : "bg-red-500 hover:bg-red-600"
                         }
                       >
-                        {booking.booking.status.replace("_", " ")}
+                        {booking.status.replace("_", " ")}
                       </Badge>
                     </TableCell>
                   </TableRow>

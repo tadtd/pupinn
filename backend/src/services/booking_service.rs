@@ -177,16 +177,28 @@ impl BookingService {
             .load(&mut conn)
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        // Also treat room housekeeping status as blocking availability.
-        // If the room is not `Available` (e.g., Dirty/Cleaning/Maintenance),
-        // it's not bookable until staff marks it Available.
+        // Check room status only for immediate bookings (check-in today)
+        // Future bookings can be made on Dirty/Cleaning/Occupied rooms since
+        // they will be available by the check-in date.
+        // Maintenance rooms are always blocked as maintenance duration is unpredictable.
+        let today = Utc::now().date_naive();
         let room_rec: Room = rooms::table
             .find(room_id)
             .first(&mut conn)
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        if room_rec.status != RoomStatus::Available {
+        // Maintenance always blocks bookings
+        if room_rec.status == RoomStatus::Maintenance {
             return Ok(false);
+        }
+
+        // For same-day check-in, room must be Available or at least cleanable
+        if check_in_date == today {
+            // Room must be Available, Dirty, or Cleaning for same-day check-in
+            // Occupied rooms cannot accept same-day bookings
+            if room_rec.status == RoomStatus::Occupied {
+                return Ok(false);
+            }
         }
 
         Ok(conflicting.is_empty())
@@ -213,15 +225,15 @@ impl BookingService {
             .first(&mut conn)
             .map_err(|_| AppError::NotFound(format!("Room with ID '{}' not found", room_id)))?;
 
-        // If the room is not Available (e.g., Dirty, Cleaning, Maintenance, Occupied),
-        // treat it as unavailable for new bookings until staff marks it Available again.
-        if room.status != RoomStatus::Available {
+        // Maintenance rooms are always blocked
+        if room.status == RoomStatus::Maintenance {
             return Err(AppError::RoomUnavailable(format!(
-                "Room {} is not available for booking",
+                "Room {} is under maintenance",
                 room.number
             )));
         }
 
+        // check_availability handles both booking conflicts and room status checks
         if !self.check_availability(room_id, check_in_date, check_out_date, None)? {
             return Err(AppError::RoomUnavailable(format!(
                 "Room {} is not available for the selected dates",
@@ -427,6 +439,7 @@ impl BookingService {
             .first(&mut conn)
             .map_err(|_| AppError::NotFound(format!("Room with ID '{}' not found", room_id)))?;
 
+        // Maintenance rooms are always blocked
         if room.status == RoomStatus::Maintenance {
             return Err(AppError::RoomUnavailable(format!(
                 "Room {} is under maintenance",
@@ -434,6 +447,7 @@ impl BookingService {
             )));
         }
 
+        // check_availability handles both booking conflicts and room status checks
         if !self.check_availability(room_id, check_in_date, check_out_date, None)? {
             return Err(AppError::RoomUnavailable(format!(
                 "Room {} is not available for the selected dates",
@@ -629,12 +643,7 @@ impl BookingService {
                 )));
             }
 
-            if current_room.status == RoomStatus::Dirty {
-                diesel::update(rooms::table.find(booking.room_id))
-                    .set(rooms::status.eq(RoomStatus::Available))
-                    .execute(conn)?;
-            }
-
+            // Set room to Occupied directly (no need to set Available first)
             diesel::update(rooms::table.find(booking.room_id))
                 .set(rooms::status.eq(RoomStatus::Occupied))
                 .execute(conn)?;
@@ -686,13 +695,8 @@ impl BookingService {
                 .first(conn)
                 .map_err(|_| diesel::result::Error::NotFound)?;
 
-            // Check booking status instead of room status - the booking must be checked in
-            if booking.status != BookingStatus::CheckedIn {
-                return Err(app_error_to_diesel(AppError::ValidationError(format!(
-                    "Booking must be checked in before checking out. Current status: {:?}",
-                    booking.status
-                ))));
-            }
+            // Note: can_transition_to already validated that only CheckedIn or Overstay
+            // bookings can check out, so no additional status check needed here.
 
             // Update the booking's check_out_date to today (or at least
             // `check_in_date + 1`) and adjust the price so financial reports
