@@ -42,26 +42,48 @@ pub fn apply_stale_statuses_fix(pool: &DbPool) {
         Ok(mut conn) => {
             // SQL mirrors the migration that normalizes booking_status values
             // and ensures the enum contains required values.
-            let sql = r#"
-                ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'overstay';
+            // Note: ALTER TYPE must be executed separately as it cannot be in a transaction
+            // and cannot be combined with other statements in a prepared statement.
+            
+            // First, try to add the 'overstay' enum value if it doesn't exist
+            // Note: ALTER TYPE ... ADD VALUE cannot be in a transaction and IF NOT EXISTS
+            // may not be supported in all PostgreSQL versions, so we catch and ignore
+            // "already exists" errors.
+            match sql_query("ALTER TYPE booking_status ADD VALUE IF NOT EXISTS 'overstay'").execute(&mut conn) {
+                Ok(_) => info!("Added 'overstay' to booking_status enum"),
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    // Ignore errors about the value already existing
+                    if err_msg.contains("already exists") || err_msg.contains("duplicate") {
+                        info!("Enum value 'overstay' already exists in booking_status");
+                    } else {
+                        error!("Failed to add 'overstay' to booking_status enum: {}", e);
+                    }
+                }
+            }
 
-                UPDATE bookings
-                SET status = 'checked_in'::booking_status
-                WHERE status::text IN ('Checked In', 'CheckedIn');
+            // Then execute the UPDATE statements separately
+            let updates = vec![
+                ("UPDATE bookings SET status = 'checked_in'::booking_status WHERE status::text IN ('Checked In', 'CheckedIn')", "checked_in"),
+                ("UPDATE bookings SET status = 'upcoming'::booking_status WHERE status::text = 'Upcoming'", "upcoming"),
+                ("UPDATE bookings SET status = 'checked_out'::booking_status WHERE status::text IN ('Checked Out', 'CheckedOut')", "checked_out"),
+            ];
 
-                UPDATE bookings
-                SET status = 'upcoming'::booking_status
-                WHERE status::text = 'Upcoming';
+            let mut success_count = 0;
+            for (sql, name) in updates {
+                match sql_query(sql).execute(&mut conn) {
+                    Ok(_) => {
+                        success_count += 1;
+                        info!("Updated bookings status to '{}'", name);
+                    }
+                    Err(e) => {
+                        error!("Failed to update bookings status to '{}': {}", name, e);
+                    }
+                }
+            }
 
-                UPDATE bookings
-                SET status = 'checked_out'::booking_status
-                WHERE status::text IN ('Checked Out', 'CheckedOut');
-            "#;
-
-            if let Err(e) = sql_query(sql).execute(&mut conn) {
-                error!("Failed to apply stale status fix SQL: {}", e);
-            } else {
-                info!("Applied stale status DB fixes on startup");
+            if success_count > 0 {
+                info!("Applied stale status DB fixes on startup ({} updates succeeded)", success_count);
             }
         }
         Err(e) => {

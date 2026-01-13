@@ -133,23 +133,73 @@ export default function GuestBookPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-"use client";
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/guest/bookings">
+            <ArrowLeft className="h-5 w-5" />
+            <span className="sr-only">Back to Bookings</span>
+          </Link>
+        </Button>
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Calendar className="w-6 h-6 text-slate-400" />
+          New Booking
+        </h1>
+      </div>
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+      <Card>
+        <CardContent className="py-6">
+          <GuestBookingForm
+            isLoadingRooms={isLoadingRooms}
+            availableRooms={availableRooms}
+            onSearch={handleSearch}
+            onBook={handleBook}
+            isBooking={bookingMutation.isPending}
+          />
+        </CardContent>
+      </Card>
 
-export default function GuestBookRedirectPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirect to new bookings page
-    router.replace("/guest/bookings/new");
-  }, [router]);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="text-slate-400">Redirecting...</div>
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-6 h-6" /> Booking Confirmed!
+            </DialogTitle>
+            <DialogDescription>
+              Thank you for booking with PupInn.
+            </DialogDescription>
+          </DialogHeader>
+          {bookingResult && (
+            <div className="space-y-2 py-2">
+              <div className="flex items-center gap-2">
+                <Home className="w-4 h-4" />
+                <span>Room: <b>{bookingResult.room?.number}</b> — {bookingResult.room?.room_type}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>
+                  {format(new Date(bookingResult.booking.check_in_date), "PPP")} {"→"} {format(new Date(bookingResult.booking.check_out_date), "PPP")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Copy
+                  className="w-4 h-4 cursor-pointer text-muted-foreground hover:text-slate-800"
+                  onClick={handleCopyReference}
+                  aria-label="Copy booking reference"
+                  tabIndex={0}
+                />
+                <span>
+                  Reference: <b className="font-mono">{bookingResult.booking.reference}</b>
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end pt-4">
+            <Button onClick={handleCloseConfirmation}>
+              View My Bookings
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

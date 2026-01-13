@@ -73,32 +73,25 @@ export function EmployeeForm({
     defaultValues: employee
       ? {
           username: employee.username || null,
-          role: employee.role,
+          role: employee.role === "guest" ? null : employee.role,
           email: employee.email || null,
           full_name: employee.full_name || null,
         }
       : {},
   });
 
-  const form = isEditMode ? updateForm : createForm;
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = form;
-
-  const selectedRole = watch("role");
+  const selectedRole = isEditMode 
+    ? updateForm.watch("role")
+    : createForm.watch("role");
 
   useEffect(() => {
-    if (employee) {
-      setValue("username", employee.username || null);
-      setValue("role", employee.role);
-      setValue("email", employee.email || null);
-      setValue("full_name", employee.full_name || null);
+    if (employee && isEditMode) {
+      updateForm.setValue("username", employee.username || null);
+      updateForm.setValue("role", employee.role === "guest" ? null : employee.role);
+      updateForm.setValue("email", employee.email || null);
+      updateForm.setValue("full_name", employee.full_name || null);
     }
-  }, [employee, setValue]);
+  }, [employee, isEditMode, updateForm]);
 
   const onSubmit = async (
     data: CreateEmployeeRequest | UpdateEmployeeRequest
@@ -146,7 +139,7 @@ export function EmployeeForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={isEditMode ? updateForm.handleSubmit(onSubmit) : createForm.handleSubmit(onSubmit)} className="space-y-6">
       {error && (
         <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
           {error}
@@ -162,12 +155,12 @@ export function EmployeeForm({
           id="username"
           placeholder="e.g., jdoe"
           className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-          {...register("username")}
+          {...(isEditMode ? updateForm.register("username") : createForm.register("username"))}
           disabled={isLoading}
         />
-        {errors.username && (
+        {(isEditMode ? updateForm.formState.errors.username : createForm.formState.errors.username) && (
           <p className="text-sm text-red-400">
-            {errors.username.message as string}
+            {(isEditMode ? updateForm.formState.errors.username : createForm.formState.errors.username)?.message as string}
           </p>
         )}
       </div>
@@ -183,12 +176,12 @@ export function EmployeeForm({
             type="password"
             placeholder="At least 8 characters"
             className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-            {...register("password")}
+            {...createForm.register("password")}
             disabled={isLoading}
           />
-          {errors.password && (
+          {createForm.formState.errors.password && (
             <p className="text-sm text-red-400">
-              {errors.password.message as string}
+              {createForm.formState.errors.password?.message as string}
             </p>
           )}
         </div>
@@ -200,10 +193,14 @@ export function EmployeeForm({
           Role <span className="text-red-400">*</span>
         </Label>
         <Select
-          value={selectedRole}
-          onValueChange={(value) =>
-            setValue("role", value as "admin" | "receptionist" | "cleaner")
-          }
+          value={selectedRole || undefined}
+          onValueChange={(value) => {
+            if (isEditMode) {
+              updateForm.setValue("role", value as "admin" | "receptionist" | "cleaner");
+            } else {
+              createForm.setValue("role", value as "admin" | "receptionist" | "cleaner");
+            }
+          }}
           disabled={isLoading}
         >
           <SelectTrigger className="bg-slate-700/50 border-slate-600 text-slate-100">
@@ -233,9 +230,9 @@ export function EmployeeForm({
             Only one admin account is allowed. An admin account already exists.
           </p>
         )}
-        {errors.role && (
+        {(isEditMode ? updateForm.formState.errors.role : createForm.formState.errors.role) && (
           <p className="text-sm text-red-400">
-            {errors.role.message as string}
+            {(isEditMode ? updateForm.formState.errors.role : createForm.formState.errors.role)?.message as string}
           </p>
         )}
       </div>
@@ -249,12 +246,12 @@ export function EmployeeForm({
           id="full_name"
           placeholder="e.g., John Doe"
           className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-          {...register("full_name")}
+          {...(isEditMode ? updateForm.register("full_name") : createForm.register("full_name"))}
           disabled={isLoading}
         />
-        {errors.full_name && (
+        {(isEditMode ? updateForm.formState.errors.full_name : createForm.formState.errors.full_name) && (
           <p className="text-sm text-red-400">
-            {errors.full_name.message as string}
+            {(isEditMode ? updateForm.formState.errors.full_name : createForm.formState.errors.full_name)?.message as string}
           </p>
         )}
       </div>
@@ -269,12 +266,12 @@ export function EmployeeForm({
           type="email"
           placeholder="e.g., john.doe@example.com"
           className="bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-          {...register("email")}
+          {...(isEditMode ? updateForm.register("email") : createForm.register("email"))}
           disabled={isLoading}
         />
-        {errors.email && (
+        {(isEditMode ? updateForm.formState.errors.email : createForm.formState.errors.email) && (
           <p className="text-sm text-red-400">
-            {errors.email.message as string}
+            {(isEditMode ? updateForm.formState.errors.email : createForm.formState.errors.email)?.message as string}
           </p>
         )}
       </div>

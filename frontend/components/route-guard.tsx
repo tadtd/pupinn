@@ -70,17 +70,6 @@ export function RouteGuard({
       return;
     }
 
-    // Redirect guest users
-    if (user && user.role === "guest") {
-      toast({
-        title: "Access Denied",
-        description: "This page is only accessible to staff members.",
-        variant: "destructive",
-      });
-      router.push("/guest");
-      return;
-    }
-
     // Redirect unauthenticated users to staff login
     if (!user) {
       router.push("/staff/login");

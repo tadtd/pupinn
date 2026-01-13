@@ -21,7 +21,7 @@ use crate::db::create_pool;
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
+    // Initialize tracing early
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -30,8 +30,11 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    tracing::info!("Starting hotel management backend server...");
+
     // Load configuration
     let config = Config::from_env();
+    tracing::info!("Configuration loaded successfully");
 
     // Create database pool
     let pool = create_pool(&config.database_url);

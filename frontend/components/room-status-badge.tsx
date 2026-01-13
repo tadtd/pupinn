@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, Sparkles, HelpCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { type RoomStatus } from "@/lib/validators";
@@ -38,9 +38,9 @@ const STATUS_CONFIG: Record<
 };
 
 export function RoomStatusBadge({ status, className }: RoomStatusBadgeProps) {
-  const config = STATUS_CONFIG[status] || {
+  const config = (status in STATUS_CONFIG ? STATUS_CONFIG[status as RoomStatus] : null) || {
     label: status || "Unknown",
-    variant: "secondary",
+    variant: "secondary" as const,
     icon: <HelpCircle className="h-3 w-3" />,
   };
 

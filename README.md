@@ -84,7 +84,7 @@ Creates full demo dataset:
 
 ```bash
 # From project root
-./scripts/init-db/seed-data.sh
+chmod +x ./scripts/init-db/seed-data.sh && ./scripts/init-db/seed-data.sh
 ```
 
 **PowerShell/Windows (Easiest - Recommended):**
@@ -126,7 +126,7 @@ cd frontend
 pnpm install
 
 # Create .env.local
-echo "NEXT_PUBLIC_API_URL=http://localhost:8080" > .env.local
+echo "NEXT_PUBLIC_API_URL=http://localhost:8080/api" > .env.local
 
 # Start development server
 pnpm dev

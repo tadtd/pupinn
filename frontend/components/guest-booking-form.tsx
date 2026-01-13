@@ -89,7 +89,7 @@ export function GuestBookingForm({
     return Math.max(0, Math.round(diff));
   })();
 
-  const pricePerNight = selectedRoom?.price ? parseFloat(selectedRoom.price) : null;
+  const pricePerNight = selectedRoom?.price ? parseFloat(String(selectedRoom.price)) : null;
   const totalPrice = pricePerNight != null ? pricePerNight * nights : null;
   const currencyFormat = new Intl.NumberFormat("vi-VN", {
     style: "currency",
