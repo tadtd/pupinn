@@ -953,6 +953,102 @@ impl BookingService {
         })
     }
 
+    /// Get time-series revenue data grouped by date
+    pub fn get_revenue_time_series(
+        &self,
+        room_id: Option<Uuid>,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> AppResult<Vec<(NaiveDate, BigDecimal)>> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let mut query = bookings::table
+            .into_boxed()
+            .filter(bookings::status.eq(BookingStatus::CheckedOut));
+
+        if let Some(room_id) = room_id {
+            query = query.filter(bookings::room_id.eq(room_id));
+        }
+
+        if let Some(start) = start_date {
+            query = query.filter(bookings::check_out_date.ge(start));
+        }
+
+        if let Some(end) = end_date {
+            query = query.filter(bookings::check_out_date.le(end));
+        }
+
+        let bookings_list: Vec<Booking> = query
+            .order(bookings::check_out_date.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        // Group by date and sum revenue
+        use std::collections::HashMap;
+        let mut revenue_by_date: HashMap<NaiveDate, BigDecimal> = HashMap::new();
+
+        for booking in bookings_list {
+            let date = booking.check_out_date;
+            let revenue = revenue_by_date.entry(date).or_insert_with(|| BigDecimal::from(0));
+            *revenue += &booking.price;
+        }
+
+        let mut result: Vec<(NaiveDate, BigDecimal)> = revenue_by_date.into_iter().collect();
+        result.sort_by_key(|(date, _)| *date);
+
+        Ok(result)
+    }
+
+    /// Get booking history for a specific room
+    pub fn get_room_booking_history(
+        &self,
+        room_id: Uuid,
+        start_date: Option<NaiveDate>,
+        end_date: Option<NaiveDate>,
+    ) -> AppResult<Vec<BookingWithRoom>> {
+        let mut conn = self
+            .pool
+            .get()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let mut query = bookings::table
+            .into_boxed()
+            .filter(bookings::room_id.eq(room_id))
+            .filter(bookings::status.eq(BookingStatus::CheckedOut));
+
+        if let Some(start) = start_date {
+            query = query.filter(bookings::check_out_date.ge(start));
+        }
+
+        if let Some(end) = end_date {
+            query = query.filter(bookings::check_out_date.le(end));
+        }
+
+        let booking_list: Vec<Booking> = query
+            .order(bookings::check_out_date.desc())
+            .load(&mut conn)
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let room: Option<Room> = rooms::table
+            .find(room_id)
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let result: Vec<BookingWithRoom> = booking_list
+            .into_iter()
+            .map(|booking| BookingWithRoom {
+                booking,
+                room: room.clone(),
+            })
+            .collect();
+
+        Ok(result)
+    }
+
     /// Handle stale bookings
     pub fn handle_stale_bookings(&self, conn: &mut PgConnection) -> QueryResult<(usize, usize)> {
         use crate::schema::bookings::dsl::*;

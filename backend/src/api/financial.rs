@@ -90,6 +90,19 @@ pub struct CompareRoomsResponse {
     pub rooms: Vec<RoomFinancialSummary>,
 }
 
+/// Time-series revenue data point
+#[derive(Debug, Serialize)]
+pub struct RevenueDataPoint {
+    pub date: String, // YYYY-MM-DD format
+    pub revenue: String, // Decimal as string
+}
+
+/// Revenue time-series response
+#[derive(Debug, Serialize)]
+pub struct RevenueTimeSeriesResponse {
+    pub data: Vec<RevenueDataPoint>,
+}
+
 /// List all rooms with financial summary
 /// GET /admin/financial/rooms
 pub async fn list_rooms_with_financials(
@@ -268,3 +281,103 @@ pub async fn compare_rooms(
     Ok(Json(CompareRoomsResponse { rooms: summaries }))
 }
 
+/// Get revenue time-series data
+/// GET /admin/financial/revenue/time-series
+pub async fn get_revenue_time_series(
+    State(state): State<AppState>,
+    Query(query): Query<DateRangeQuery>,
+    Extension(_auth_user): Extension<AuthUser>,
+) -> Result<impl IntoResponse, AppError> {
+    let booking_service = BookingService::new(state.pool.clone());
+
+    // Parse date range
+    let start_date = query
+        .start_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+    let end_date = query
+        .end_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    // Get time-series data for all rooms (room_id = None)
+    let time_series = booking_service.get_revenue_time_series(None, start_date, end_date)?;
+
+    let data: Vec<RevenueDataPoint> = time_series
+        .into_iter()
+        .map(|(date, revenue)| RevenueDataPoint {
+            date: date.format("%Y-%m-%d").to_string(),
+            revenue: revenue.to_string(),
+        })
+        .collect();
+
+    Ok(Json(RevenueTimeSeriesResponse { data }))
+}
+
+/// Get revenue time-series data for a specific room
+/// GET /admin/financial/rooms/:roomId/revenue/time-series
+pub async fn get_room_revenue_time_series(
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+    Query(query): Query<DateRangeQuery>,
+    Extension(_auth_user): Extension<AuthUser>,
+) -> Result<impl IntoResponse, AppError> {
+    let booking_service = BookingService::new(state.pool.clone());
+    let room_service = RoomService::new(state.pool.clone());
+
+    // Verify room exists
+    room_service.get_room_by_id(room_id)?;
+
+    // Parse date range
+    let start_date = query
+        .start_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+    let end_date = query
+        .end_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    // Get time-series data for the room
+    let time_series = booking_service.get_revenue_time_series(Some(room_id), start_date, end_date)?;
+
+    let data: Vec<RevenueDataPoint> = time_series
+        .into_iter()
+        .map(|(date, revenue)| RevenueDataPoint {
+            date: date.format("%Y-%m-%d").to_string(),
+            revenue: revenue.to_string(),
+        })
+        .collect();
+
+    Ok(Json(RevenueTimeSeriesResponse { data }))
+}
+
+/// Get booking history for a specific room
+/// GET /admin/financial/rooms/:roomId/bookings
+pub async fn get_room_booking_history(
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+    Query(query): Query<DateRangeQuery>,
+    Extension(_auth_user): Extension<AuthUser>,
+) -> Result<impl IntoResponse, AppError> {
+    let booking_service = BookingService::new(state.pool.clone());
+    let room_service = RoomService::new(state.pool.clone());
+
+    // Verify room exists
+    room_service.get_room_by_id(room_id)?;
+
+    // Parse date range
+    let start_date = query
+        .start_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+    let end_date = query
+        .end_date
+        .as_ref()
+        .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    // Get booking history
+    let bookings = booking_service.get_room_booking_history(room_id, start_date, end_date)?;
+
+    Ok(Json(bookings))
+}

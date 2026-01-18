@@ -164,6 +164,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/financial/rooms", get(financial::list_rooms_with_financials))
         .route("/financial/rooms/:roomId", get(financial::get_room_financials))
         .route("/financial/rooms/compare", post(financial::compare_rooms))
+        .route("/financial/revenue/time-series", get(financial::get_revenue_time_series))
+        .route("/financial/rooms/:roomId/revenue/time-series", get(financial::get_room_revenue_time_series))
+        .route("/financial/rooms/:roomId/bookings", get(financial::get_room_booking_history))
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),
             middleware::require_admin,

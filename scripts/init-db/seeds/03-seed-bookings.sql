@@ -15,6 +15,14 @@ BEGIN
   UPDATE bookings SET guest_name = 'Xuan-Dung Nguyen' WHERE reference = 'SEED-005';
   UPDATE bookings SET guest_name = 'Minh-Tuan Nguyen-Ngoc' WHERE reference = 'SEED-006';
   UPDATE bookings SET guest_name = 'Thanh-Trinh Nguyen' WHERE reference = 'SEED-007';
+  UPDATE bookings SET guest_name = 'Van-Anh Le' WHERE reference = 'SEED-008';
+  UPDATE bookings SET guest_name = 'Hoang-Nam Vu' WHERE reference = 'SEED-009';
+  UPDATE bookings SET guest_name = 'Thi-Hong Tran' WHERE reference = 'SEED-010';
+  UPDATE bookings SET guest_name = 'Quoc-Dung Phan' WHERE reference = 'SEED-011';
+  UPDATE bookings SET guest_name = 'Mai-Linh Ho' WHERE reference = 'SEED-012';
+  UPDATE bookings SET guest_name = 'Thanh-Long Bui' WHERE reference = 'SEED-013';
+  UPDATE bookings SET guest_name = 'Thu-Ha Dang' WHERE reference = 'SEED-014';
+  UPDATE bookings SET guest_name = 'Duc-Minh Vo' WHERE reference = 'SEED-015';
   
   -- Then create if they don't exist
   IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference LIKE 'SEED-%') THEN
@@ -162,6 +170,177 @@ BEGIN
     RAISE NOTICE '    - 1 cancelled booking (room 402 - available)';
   ELSE
     RAISE NOTICE '  ⊘ Sample bookings already exist, skipping';
+  END IF;
+  
+  -- Add additional checked-out bookings for more detailed line graph data
+  -- These are added conditionally regardless of the above block
+  
+  -- Booking 8: Checked-out booking (Room 102 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-008') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000008'::uuid,
+      'SEED-008',
+      'Van-Anh Le',
+      '10000000-0000-0000-0000-000000000102'::uuid,  -- Room 102
+      CURRENT_DATE - INTERVAL '7 days',
+      CURRENT_DATE - INTERVAL '4 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000002'::uuid,  -- Receptionist
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000102'::uuid) * 3,
+      NOW() - INTERVAL '8 days',
+      NOW() - INTERVAL '4 days'
+    );
+  END IF;
+  
+  -- Booking 9: Checked-out booking (Room 202 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-009') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000009'::uuid,
+      'SEED-009',
+      'Hoang-Nam Vu',
+      '10000000-0000-0000-0000-000000000202'::uuid,  -- Room 202
+      CURRENT_DATE - INTERVAL '10 days',
+      CURRENT_DATE - INTERVAL '7 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000001'::uuid,  -- Admin
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000202'::uuid) * 3,
+      NOW() - INTERVAL '11 days',
+      NOW() - INTERVAL '7 days'
+    );
+  END IF;
+  
+  -- Booking 10: Checked-out booking (Room 302 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-010') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000010'::uuid,
+      'SEED-010',
+      'Thi-Hong Tran',
+      '10000000-0000-0000-0000-000000000302'::uuid,  -- Room 302
+      CURRENT_DATE - INTERVAL '12 days',
+      CURRENT_DATE - INTERVAL '9 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000002'::uuid,  -- Receptionist
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000302'::uuid) * 3,
+      NOW() - INTERVAL '13 days',
+      NOW() - INTERVAL '9 days'
+    );
+  END IF;
+  
+  -- Booking 11: Checked-out booking (Room 401 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-011') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000011'::uuid,
+      'SEED-011',
+      'Quoc-Dung Phan',
+      '10000000-0000-0000-0000-000000000401'::uuid,  -- Room 401
+      CURRENT_DATE - INTERVAL '14 days',
+      CURRENT_DATE - INTERVAL '11 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000001'::uuid,  -- Admin
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000401'::uuid) * 3,
+      NOW() - INTERVAL '15 days',
+      NOW() - INTERVAL '11 days'
+    );
+  END IF;
+  
+  -- Booking 12: Checked-out booking (Room 403 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-012') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000012'::uuid,
+      'SEED-012',
+      'Mai-Linh Ho',
+      '10000000-0000-0000-0000-000000000403'::uuid,  -- Room 403
+      CURRENT_DATE - INTERVAL '18 days',
+      CURRENT_DATE - INTERVAL '15 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000002'::uuid,  -- Receptionist
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000403'::uuid) * 3,
+      NOW() - INTERVAL '19 days',
+      NOW() - INTERVAL '15 days'
+    );
+  END IF;
+  
+  -- Booking 13: Checked-out booking (Room 102 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-013') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000013'::uuid,
+      'SEED-013',
+      'Thanh-Long Bui',
+      '10000000-0000-0000-0000-000000000102'::uuid,  -- Room 102
+      CURRENT_DATE - INTERVAL '21 days',
+      CURRENT_DATE - INTERVAL '19 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000001'::uuid,  -- Admin
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000102'::uuid) * 2,
+      NOW() - INTERVAL '22 days',
+      NOW() - INTERVAL '19 days'
+    );
+  END IF;
+  
+  -- Booking 14: Checked-out booking (Room 202 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-014') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000014'::uuid,
+      'SEED-014',
+      'Thu-Ha Dang',
+      '10000000-0000-0000-0000-000000000202'::uuid,  -- Room 202
+      CURRENT_DATE - INTERVAL '25 days',
+      CURRENT_DATE - INTERVAL '22 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000002'::uuid,  -- Receptionist
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000202'::uuid) * 3,
+      NOW() - INTERVAL '26 days',
+      NOW() - INTERVAL '22 days'
+    );
+  END IF;
+  
+  -- Booking 15: Checked-out booking (Room 302 - available)
+  IF NOT EXISTS (SELECT 1 FROM bookings WHERE reference = 'SEED-015') THEN
+    INSERT INTO bookings (
+      id, reference, guest_name, room_id, check_in_date, check_out_date,
+      status, created_by_user_id, creation_source, price, created_at, updated_at
+    ) VALUES (
+      '20000000-0000-0000-0000-000000000015'::uuid,
+      'SEED-015',
+      'Duc-Minh Vo',
+      '10000000-0000-0000-0000-000000000302'::uuid,  -- Room 302
+      CURRENT_DATE - INTERVAL '28 days',
+      CURRENT_DATE - INTERVAL '25 days',
+      'checked_out',
+      '00000000-0000-0000-0000-000000000001'::uuid,  -- Admin
+      'staff',
+      (SELECT price FROM rooms WHERE id = '10000000-0000-0000-0000-000000000302'::uuid) * 3,
+      NOW() - INTERVAL '29 days',
+      NOW() - INTERVAL '25 days'
+    );
   END IF;
   
   RAISE NOTICE 'Booking seed data complete!';
