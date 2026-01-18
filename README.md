@@ -45,7 +45,7 @@ A modern hotel management system built as a student project for an Introduction 
 
 ### 1. Database Setup (Dockerized)
 
-The project uses a Dockerized PostgreSQL 16 database with automatic migrations and optional seed data.
+The project uses a Dockerized PostgreSQL 16 database with **automatic migrations and seeding** on first initialization.
 
 ```bash
 # Step 1: Create environment file and edit your own customize database settings
@@ -59,11 +59,14 @@ docker compose up -d postgres
 docker compose ps
 ```
 
-**What gets created:**
+**What happens automatically:**
 
 - ✅ PostgreSQL 16 container with persistent data
-- ✅ Database with all tables (users, rooms, bookings)
+- ✅ Database migrations run automatically (`01-run-migrations.sh`)
+- ✅ Sample data seeded automatically (`02-seed-data.sh`) - includes 3 users, 13 rooms, 5 bookings
 - ✅ Health checks for container readiness
+
+> **Note**: Migrations and seeding only run on **first initialization** (when the database is empty). If you need to reset, use `docker compose down -v` to remove volumes, then start again.
 
 **Default Configuration:**
 
@@ -71,28 +74,6 @@ docker compose ps
 - **User**: `pupinn_user`
 - **Port**: `5432` (customizable if port conflict)
 - **Connection String**: `postgresql://pupinn_user:dev_password_123@localhost:5432/pupinn_db`
-
-### Seed Sample Data (Optional)
-
-Creates full demo dataset:
-
-- 3 users (admin, reception, guest@example.com)
-- 13 rooms (full hotel layout)
-- 5 sample bookings
-
-**Bash/Linux/Mac:**
-
-```bash
-# From project root
-chmod +x ./scripts/init-db/seed-data.sh && ./scripts/init-db/seed-data.sh
-```
-
-**PowerShell/Windows (Easiest - Recommended):**
-
-```powershell
-# From project root - Run the helper script
-.\scripts\init-db\seed-data.ps1
-```
 
 ### 2. Backend Setup
 
@@ -106,16 +87,11 @@ ALLOWED_ORIGIN=http://localhost:3000
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 
-# Run migrations
-diesel migration run
-
-# Start server
+# Start server (migrations already handled by Docker init scripts)
 cargo run --bin server
 ```
 
 The server will start on `http://localhost:8080`.
-
-> **Note**: If you haven't seeded sample data yet, see the "Optional: Seed Sample Data" section above.
 
 ### 3. Frontend Setup
 
@@ -181,9 +157,9 @@ Guests can self-register at `/register` with email, password, and full name.
 │   └── hooks/             # Custom React hooks
 │
 ├── scripts/
-│   └── init-db/           # Database initialization scripts
-│       ├── 01-run-migrations.sh    # Diesel migration runner
-│       ├── 02-seed-data.sh         # Optional seed data loader
+│   └── init-db/           # Database initialization scripts (auto-run on first DB init)
+│       ├── 01-run-migrations.sh    # Automatic migration runner
+│       ├── 02-seed-data.sh         # Automatic seed data loader
 │       └── seeds/         # SQL seed files
 │           ├── 01-seed-users.sql   # Sample users
 │           ├── 02-seed-rooms.sql   # Sample rooms
@@ -249,7 +225,7 @@ docker compose restart postgres
 ```bash
 docker compose down -v
 docker compose up -d postgres
-cd backend && diesel migration run
+# Migrations and seeding will run automatically on fresh initialization
 ```
 
 ## 🧪 Testing
