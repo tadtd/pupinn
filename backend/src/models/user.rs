@@ -20,6 +20,8 @@ pub enum UserRole {
     Guest,
     #[serde(rename = "cleaner")]
     Cleaner,
+    #[serde(rename = "bot")]
+    Bot,
 }
 
 /// User model representing a staff member or guest

@@ -17,7 +17,7 @@ if [ "$TABLE_EXISTS" != "t" ]; then
 fi
 
 # Check if users table has data
-USER_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "0")
+USER_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users WHERE role != 'bot';" 2>/dev/null | tr -d ' ' || echo "0")
 
 if [ "$USER_COUNT" -gt 0 ]; then
   echo "✅ Database already contains data ($USER_COUNT users found). Skipping seed."

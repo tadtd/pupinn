@@ -10,6 +10,7 @@ pub mod middleware;
 pub mod payments;
 pub mod rooms;
 pub mod inventory;
+mod settings;
 
 use axum::{
     middleware as axum_middleware,
@@ -172,6 +173,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/employees/:id", get(employees::get_employee).patch(employees::update_employee).delete(employees::delete_employee))
         .route("/employees/:id/reactivate", post(employees::reactivate_employee))
         .route("/employees/:id/reset-password", post(employees::reset_password))
+        .route("/ai", get(settings::get_ai_settings).post(settings::update_ai_settings))
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),
             middleware::require_admin,
@@ -203,6 +205,17 @@ pub fn create_router(state: AppState) -> Router {
         .route("/guests/search", get(guests::search_guests))
         .route("/guests/:guestId", get(guests::get_guest_profile).patch(guests::update_guest))
         .route("/guests/:guestId/notes", get(guests::get_guest_notes).post(guests::add_guest_note))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_admin,
+        ))
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::require_auth,
+        ));
+
+    let admin_settings_routes = Router::new()
+        .route("/settings/ai", get(settings::get_ai_settings).post(settings::update_ai_settings))
         .layer(axum_middleware::from_fn_with_state(
             state.clone(),
             middleware::require_admin,
@@ -269,7 +282,8 @@ pub fn create_router(state: AppState) -> Router {
             "/admin",
             admin_employee_routes
                 .merge(admin_financial_routes)
-                .merge(admin_guest_routes),
+                .merge(admin_guest_routes)
+                .merge(admin_settings_routes),
         )
         .nest("/inventory", inventory_routes.merge(admin_inventory_routes))
         .nest("/chat", chat_routes.merge(chat_ws_route))

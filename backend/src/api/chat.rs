@@ -17,6 +17,7 @@ use crate::{
     errors::{AppError, AppResult},
     models::{message::*, user::*},
     schema::{messages, users},
+    services::ai_service::AiService,
 };
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
@@ -68,6 +69,11 @@ pub struct IncomingChatMessage {
 
 // RBAC Validation Logic
 fn can_chat(role_a: UserRole, role_b: UserRole) -> bool {
+    // Pupinn (Bot) can chat with everyone
+    if role_a == UserRole::Bot || role_b == UserRole::Bot {
+        return true;
+    }
+
     match (role_a, role_b) {
         // Guest <-> Reception
         (UserRole::Guest, UserRole::Receptionist) => true,
@@ -84,6 +90,8 @@ fn can_chat(role_a: UserRole, role_b: UserRole) -> bool {
         _ => false,
     }
 }
+
+pub const PUPINN_ID: Uuid = Uuid::from_u128(0);
 
 // Get allowed contacts for the current user
 pub async fn get_contacts(
@@ -104,9 +112,8 @@ pub async fn get_contacts(
         UserRole::Receptionist => vec![UserRole::Admin, UserRole::Guest],
         UserRole::Guest => vec![UserRole::Receptionist],
         UserRole::Cleaner => vec![UserRole::Admin],
+        UserRole::Bot => vec![], // Bot doesn't query contacts
     };
-    
-    tracing::debug!("Allowed roles for user: {:?}", allowed_roles);
     
     // Query users with allowed roles
     let contact_users: Vec<User> = users::table
@@ -118,11 +125,22 @@ pub async fn get_contacts(
             AppError::DatabaseError(e.to_string())
         })?;
     
-    tracing::debug!("Found {} potential contacts", contact_users.len());
-    
+    // Always fetch Pupinn if not current user
+    let pupinn: Option<User> = if auth_user.user_id != PUPINN_ID {
+        users::table.find(PUPINN_ID).first(&mut conn).optional().unwrap_or(None)
+    } else {
+        None
+    };
+
+    let mut all_users = contact_users;
+    if let Some(p) = pupinn {
+        // Insert Pupinn at start
+        all_users.insert(0, p);
+    }
+
     // Calculate unread counts for each contact
     let mut contacts = Vec::new();
-    for user in contact_users {
+    for user in all_users {
         let unread_count: i64 = messages::table
             .filter(messages::sender_id.eq(user.id))
             .filter(messages::receiver_id.eq(auth_user.user_id))
@@ -147,7 +165,6 @@ pub async fn get_contacts(
         });
     }
     
-    tracing::info!("Returning {} contacts for user {}", contacts.len(), auth_user.user_id);
     Ok(Json(contacts))
 }
 
@@ -157,32 +174,18 @@ pub async fn get_chat_history(
     Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<ChatHistoryParams>,
 ) -> AppResult<Json<Vec<MessageResponse>>> {
-    tracing::info!("get_chat_history called: user_id={}, other_user_id={}", auth_user.user_id, params.other_user_id);
-    
     let mut conn = get_conn(&state.pool)
-        .map_err(|e| {
-            tracing::error!("Failed to get DB connection: {}", e);
-            AppError::DatabaseError(format!("Connection pool error: {}", e))
-        })?;
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
     
-    // Fetch the other user to verify they exist and can chat
     let other_user: User = users::table
         .find(params.other_user_id)
         .first(&mut conn)
-        .map_err(|e| {
-            tracing::error!("User {} not found: {}", params.other_user_id, e);
-            AppError::NotFound("User not found".to_string())
-        })?;
+        .map_err(|_| AppError::NotFound("User not found".to_string()))?;
     
-    tracing::debug!("Other user found: id={}, role={:?}", other_user.id, other_user.role);
-    
-    // Verify RBAC
     if !can_chat(auth_user.role, other_user.role) {
-        tracing::warn!("RBAC check failed: {:?} cannot chat with {:?}", auth_user.role, other_user.role);
         return Err(AppError::Forbidden("Cannot chat with this user".to_string()));
     }
     
-    // Fetch messages between the two users
     let message_list: Vec<Message> = messages::table
         .filter(
             messages::sender_id.eq(auth_user.user_id)
@@ -192,15 +195,10 @@ pub async fn get_chat_history(
         )
         .order(messages::created_at.asc())
         .load(&mut conn)
-        .map_err(|e| {
-            tracing::error!("Failed to load messages: {}", e);
-            AppError::DatabaseError(e.to_string())
-        })?;
-    
-    tracing::debug!("Loaded {} messages", message_list.len());
+        .map_err(|e| AppError::DatabaseError(e.to_string()))?;
     
     // Mark messages as read
-    let updated_count = diesel::update(
+    diesel::update(
         messages::table
             .filter(messages::sender_id.eq(params.other_user_id))
             .filter(messages::receiver_id.eq(auth_user.user_id))
@@ -208,12 +206,7 @@ pub async fn get_chat_history(
     )
     .set(messages::is_read.eq(true))
     .execute(&mut conn)
-    .map_err(|e| {
-        tracing::error!("Failed to mark messages as read: {}", e);
-        AppError::DatabaseError(e.to_string())
-    })?;
-    
-    tracing::debug!("Marked {} messages as read", updated_count);
+    .map_err(|e| AppError::DatabaseError(e.to_string()))?;
     
     let response: Vec<MessageResponse> = message_list
         .into_iter()
@@ -228,22 +221,17 @@ pub async fn get_chat_history(
         })
         .collect();
     
-    tracing::info!("Returning {} messages for chat history", response.len());
     Ok(Json(response))
 }
 
-// WebSocket handler - extract token from query params
+// WebSocket handler
 pub async fn chat_websocket_handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> impl IntoResponse {
-    tracing::info!("WebSocket connection attempt");
-    
-    // Extract token from query params
     let token = params.get("token").cloned();
     
-    // Validate token and extract user info
     let auth_result = if let Some(ref token_str) = token {
         let auth_service = crate::services::AuthService::new(
             state.pool.clone(),
@@ -251,7 +239,6 @@ pub async fn chat_websocket_handler(
         );
         auth_service.validate_token(token_str)
     } else {
-        tracing::warn!("WebSocket connection rejected: missing token");
         return axum::response::Response::builder()
             .status(axum::http::StatusCode::UNAUTHORIZED)
             .body(axum::body::Body::from("Missing token"))
@@ -261,19 +248,9 @@ pub async fn chat_websocket_handler(
     
     let claims = match auth_result {
         Ok(claims) => claims,
-        Err(e) => {
-            tracing::warn!("WebSocket connection rejected: invalid token - {:?}", e);
-            return axum::response::Response::builder()
-                .status(axum::http::StatusCode::UNAUTHORIZED)
-                .body(axum::body::Body::from("Invalid token"))
-                .unwrap()
-                .into_response();
-        }
+        Err(_) => return axum::response::Response::builder().status(axum::http::StatusCode::UNAUTHORIZED).body(axum::body::Body::from("Invalid")).unwrap().into_response(),
     };
     
-    tracing::info!("WebSocket authenticated for user_id={}, role={:?}", claims.sub, claims.role);
-    
-    // Convert to Arc for use in spawned tasks
     let state_arc = std::sync::Arc::new(state);
     
     ws.on_upgrade(move |socket| {
@@ -292,10 +269,9 @@ async fn handle_socket(
     my_id: Uuid,
     my_role: UserRole,
 ) {
-    tracing::info!("WebSocket handler started for user_id={}", my_id);
     let (mut sender, mut receiver) = socket.split();
     
-    // Create or get broadcast channel for this user
+    // Subscribe to messages
     let tx = {
         let mut connections = state.chat_state.active_connections.lock().unwrap();
         connections.entry(my_id).or_insert_with(|| {
@@ -305,6 +281,18 @@ async fn handle_socket(
     };
     
     let mut rx = tx.subscribe();
+
+    // Fetch user name for AI context
+    let user_name = {
+        let mut conn = get_conn(&state.pool).expect("Failed to get DB connection");
+        users::table
+            .find(my_id)
+            .first::<User>(&mut conn)
+            .ok()
+            .and_then(|u| u.username.or(u.full_name))
+            .unwrap_or_else(|| "User".to_string())
+    };
+    let user_name = Arc::new(user_name);
     
     // Task 1: Send incoming messages from other users to this socket
     let mut send_task = tokio::spawn(async move {
@@ -316,82 +304,111 @@ async fn handle_socket(
     });
     
     // Task 2: Receive messages from this socket and save to DB + forward
+    let recv_user_name = user_name.clone();
     let mut recv_task = tokio::spawn({
         let state = state.clone();
         async move {
             while let Some(Ok(msg)) = receiver.next().await {
                 if let WsMessage::Text(text) = msg {
-                    tracing::debug!("Received WebSocket message: {}", text);
                     if let Ok(incoming) = serde_json::from_str::<IncomingChatMessage>(&text) {
-                        tracing::info!("Processing chat message from {} to {}", my_id, incoming.receiver_id);
-                        // Get receiver from DB to verify role
-                        let mut conn = match get_conn(&state.pool) {
-                            Ok(c) => c,
-                            Err(e) => {
-                                tracing::error!("Failed to get DB connection in WebSocket handler: {}", e);
-                                continue;
-                            }
-                        };
                         
-                        let receiver_user: Option<User> = users::table
-                            .find(incoming.receiver_id)
-                            .first(&mut conn)
-                            .optional()
-                            .ok()
-                            .flatten();
-                        
-                        if let Some(receiver_user) = receiver_user {
-                            // Verify RBAC
-                            if !can_chat(my_role, receiver_user.role) {
-                                tracing::warn!("WebSocket message blocked by RBAC: {:?} cannot chat with {:?}", my_role, receiver_user.role);
-                                continue;
-                            }
+                        // Check if receiver is Pupinn (The Bot)
+                        if incoming.receiver_id == PUPINN_ID {
+                            // 1. Save user message to DB
+                            let mut conn = get_conn(&state.pool).expect("DB Pool Error");
                             
-                            // Save message to DB
-                            let new_message = NewMessage {
+                            let user_message = NewMessage {
                                 sender_id: my_id,
-                                receiver_id: incoming.receiver_id,
+                                receiver_id: PUPINN_ID,
                                 content: incoming.content.clone(),
                                 image_url: incoming.image_url.clone(),
                             };
-                            
-                            let saved_message: Message = diesel::insert_into(messages::table)
-                                .values(&new_message)
+
+                            let _saved_msg: Message = diesel::insert_into(messages::table)
+                                .values(&user_message)
                                 .get_result(&mut conn)
-                                .ok()
-                                .unwrap_or_else(|| {
-                                    tracing::error!("Failed to save message to database");
-                                    // If save fails, still try to forward
-                                    Message {
-                                        id: Uuid::new_v4(),
-                                        sender_id: my_id,
-                                        receiver_id: incoming.receiver_id,
-                                        content: incoming.content.clone(),
-                                        image_url: incoming.image_url.clone(),
-                                        is_read: false,
-                                        created_at: Utc::now(),
-                                        updated_at: Utc::now(),
+                                .expect("Failed to save msg");
+
+                            // 2. Trigger AI Response (Async)
+                            let ai_service = AiService::new(state.pool.clone());
+                            let content_clone = incoming.content.clone();
+                            let state_clone = state.clone();
+                            let name_clone = recv_user_name.to_string();
+                            
+                            tokio::spawn(async move {
+                                let reply_content = ai_service.generate_reply(my_id, &name_clone, &content_clone).await;
+                                
+                                if let Some(reply) = reply_content {
+                                    // Save Bot Reply
+                                    let mut conn = get_conn(&state_clone.pool).expect("DB Pool Error");
+                                    let bot_msg = NewMessage {
+                                        sender_id: PUPINN_ID,
+                                        receiver_id: my_id,
+                                        content: reply,
+                                        image_url: None,
+                                    };
+                                    
+                                    let saved_bot_msg: Message = diesel::insert_into(messages::table)
+                                        .values(&bot_msg)
+                                        .get_result(&mut conn)
+                                        .expect("Failed to save bot msg");
+                                    
+                                    // Notify User
+                                    let connections = state_clone.chat_state.active_connections.lock().unwrap();
+                                    if let Some(user_tx) = connections.get(&my_id) {
+                                        let message_json = serde_json::json!({
+                                            "id": saved_bot_msg.id,
+                                            "sender_id": saved_bot_msg.sender_id,
+                                            "receiver_id": saved_bot_msg.receiver_id,
+                                            "content": saved_bot_msg.content,
+                                            "image_url": saved_bot_msg.image_url,
+                                            "is_read": saved_bot_msg.is_read,
+                                            "created_at": saved_bot_msg.created_at,
+                                        });
+                                        let _ = user_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
                                     }
-                                });
+                                }
+                            });
+
+                        } else {
+                            // Standard P2P Chat Logic
+                            let mut conn = get_conn(&state.pool).expect("Failed to get DB conn");
                             
-                            tracing::info!("Message saved with id={}", saved_message.id);
+                            let receiver_user: Option<User> = users::table
+                                .find(incoming.receiver_id)
+                                .first(&mut conn)
+                                .optional()
+                                .ok()
+                                .flatten();
                             
-                            // Forward to receiver if connected
-                            let connections = state.chat_state.active_connections.lock().unwrap();
-                            if let Some(receiver_tx) = connections.get(&incoming.receiver_id) {
-                                tracing::debug!("Forwarding message to connected receiver {}", incoming.receiver_id);
-                                let message_json = serde_json::json!({
-                                    "id": saved_message.id,
-                                    "sender_id": saved_message.sender_id,
-                                    "receiver_id": saved_message.receiver_id,
-                                    "content": saved_message.content,
-                                    "image_url": saved_message.image_url,
-                                    "is_read": saved_message.is_read,
-                                    "created_at": saved_message.created_at,
-                                });
-                                let _ = receiver_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
-                            } else {
-                                tracing::debug!("Receiver {} not connected, message saved for later", incoming.receiver_id);
+                            if let Some(receiver_user) = receiver_user {
+                                if !can_chat(my_role, receiver_user.role) { continue; }
+                                
+                                let new_message = NewMessage {
+                                    sender_id: my_id,
+                                    receiver_id: incoming.receiver_id,
+                                    content: incoming.content.clone(),
+                                    image_url: incoming.image_url.clone(),
+                                };
+                                
+                                if let Ok(saved_message) = diesel::insert_into(messages::table)
+                                    .values(&new_message)
+                                    .get_result::<Message>(&mut conn) 
+                                {
+                                    let connections = state.chat_state.active_connections.lock().unwrap();
+                                    if let Some(receiver_tx) = connections.get(&incoming.receiver_id) {
+                                        let message_json = serde_json::json!({
+                                            "id": saved_message.id,
+                                            "sender_id": saved_message.sender_id,
+                                            "receiver_id": saved_message.receiver_id,
+                                            "content": saved_message.content,
+                                            "image_url": saved_message.image_url,
+                                            "is_read": saved_message.is_read,
+                                            "created_at": saved_message.created_at,
+                                        });
+                                        let _ = receiver_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
+                                    }
+                                }
                             }
                         }
                     }
@@ -405,9 +422,6 @@ async fn handle_socket(
         _ = &mut recv_task => send_task.abort(),
     };
     
-    tracing::info!("WebSocket connection closed for user_id={}", my_id);
-    
-    // Clean up connection when socket closes
     let mut connections = state.chat_state.active_connections.lock().unwrap();
     connections.remove(&my_id);
 }

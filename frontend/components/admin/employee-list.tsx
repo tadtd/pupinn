@@ -88,7 +88,11 @@ export function EmployeeList({
         icon: <User className="h-3 w-3 mr-1" />,
       },
     };
-    const variant = variants[role];
+    const variant = variants[role] || {
+      className: "bg-slate-500 hover:bg-slate-600",
+      label: role || "Unknown",
+      icon: <User className="h-3 w-3 mr-1" />,
+    };
     return (
       <Badge className={variant.className}>
         {variant.icon}
