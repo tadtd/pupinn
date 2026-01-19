@@ -123,7 +123,7 @@ export default function ReceptionistDashboardPage() {
 
   return (
     <RouteGuard requiredRole="receptionist">
-      <div className="space-y-8">
+      <div className="space-y-8 px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-100">
             Welcome back, {user?.username}!

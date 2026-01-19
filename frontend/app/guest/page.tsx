@@ -16,7 +16,7 @@ export default function GuestDashboardPage() {
   const { user } = useGuestAuth();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-8 py-8">
       {/* Welcome Section */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-100">

@@ -3,6 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: pupinn_postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pupinn_db}
       POSTGRES_USER: ${POSTGRES_USER:-pupinn_user}
@@ -24,6 +26,8 @@ services:
   minio:
     image: minio/minio
     container_name: pupinn_minio
+    env_file:
+      - .env
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -46,6 +50,8 @@ services:
     image: minio/mc
     depends_on:
       - minio
+    env_file:
+      - .env
     entrypoint:
       - /bin/sh
       - -c
@@ -70,6 +76,8 @@ services:
       dockerfile: ./backend/Dockerfile
     image: magnusdtd/intro2se-backend
     container_name: pupinn_backend
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     networks:
@@ -99,6 +107,8 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
     image: magnusdtd/intro2se-frontend
     container_name: pupinn_frontend
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     networks:

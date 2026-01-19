@@ -42,7 +42,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "hotel_management_backend=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "debug".into()),
         )
         .with(
             tracing_subscriber::fmt::layer()
@@ -66,22 +66,20 @@ async fn main() {
     // Attempt to apply DB fixes for enum normalization / stale statuses
     crate::db::apply_stale_statuses_fix(&pool);
 
-    // Initialize S3 client for MinIO
-    let minio_url = std::env::var("MINIO_URL")
-        .unwrap_or_else(|_| "http://minio:9000".to_string());
-    let minio_user = std::env::var("MINIO_ROOT_USER")
-        .unwrap_or_else(|_| "minioadmin".to_string());
-    let minio_password = std::env::var("MINIO_ROOT_PASSWORD")
-        .unwrap_or_else(|_| "minioadmin".to_string());
+    tracing::info!("Final MinIO Config Check:");
+    tracing::info!("  MINIO_URL: {}", config.minio_url);
+    tracing::info!("  MINIO_ROOT_USER: {}", config.minio_root_user);
+    // Do not log password for security, but log its length/presence
+    tracing::info!("  MINIO_ROOT_PASSWORD: [SET, length={}]", config.minio_root_password.len());
     
-    tracing::info!("Initializing S3 client for MinIO at {}", minio_url);
+    tracing::info!("Initializing S3 client for MinIO at {}", config.minio_url);
     
     let s3_config = aws_sdk_s3::config::Builder::new()
-        .endpoint_url(&minio_url)
+        .endpoint_url(&config.minio_url)
         .region(aws_sdk_s3::config::Region::new("us-east-1"))
         .credentials_provider(aws_sdk_s3::config::Credentials::new(
-            &minio_user,
-            &minio_password,
+            &config.minio_root_user,
+            &config.minio_root_password,
             None,
             None,
             "minio",
