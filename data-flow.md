@@ -270,11 +270,15 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
+    UserMsg("User Message<br/>(Input Request)")
+
     subgraph AI["AI Service (Rig Framework)"]
-        Agent["AI Agent<br/>(GPT-4/Gemini)"]
+        direction TB
+        Agent("AI Agent<br/>(GPT-4/Gemini)")
         Preamble["System Preamble<br/>(Instructions)"]
         
         subgraph Tools["Custom Tools"]
+            direction TB
             Search["SearchRoomsTool<br/>Inputs: dates, room_type<br/>Output: Available rooms"]
             Proposal["CreateBookingProposalTool<br/>Inputs: room_id, dates<br/>Output: BOOKING_PROPOSAL"]
         end
@@ -286,22 +290,26 @@ flowchart TB
     end
     
     DB[(Database)]
-    
-    Agent --> Preamble
-    Agent --> Tools
+    UserMsg -.->|"1. Gather info"| Agent
+    Preamble --- Agent
+    Agent -.->|"2. Search rooms"| Search
+    Agent -.->|"3. Create proposal"| Proposal
     Search --> RS
     Proposal --> BS
     RS --> DB
     BS --> DB
     
-    Agent -.->|"1. Gather info"| Agent
-    Agent -.->|"2. Search rooms"| Search
-    Agent -.->|"3. Create proposal"| Proposal
-    
-    style Agent fill:#8b5cf6
-    style Search fill:#3b82f6
-    style Proposal fill:#3b82f6
-    style DB fill:#10b981
+    classDef agent fill:#8b5cf6,stroke:#fff,stroke-width:2px,color:white;
+    classDef tool fill:#3b82f6,stroke:#fff,stroke-width:2px,color:white;
+    classDef db fill:#10b981,stroke:#fff,stroke-width:2px,color:white;
+    classDef gray fill:#333,stroke:#fff,stroke-width:1px,color:white;
+    classDef user fill:#e11d48,stroke:#fff,stroke-width:2px,color:white;
+
+    class Agent agent;
+    class Search,Proposal tool;
+    class DB db;
+    class RS,BS,Preamble gray;
+    class UserMsg user;
 ```
 
 ---
@@ -555,7 +563,7 @@ flowchart LR
     V2 --> V3
     
     style Refund fill:#ef4444
-    style V3 fill:#fbbf24
+    style V3 fill:#de6f1b
 ```
 
 ---
