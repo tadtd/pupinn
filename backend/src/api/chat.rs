@@ -339,33 +339,106 @@ async fn handle_socket(
                                 let reply_content = ai_service.generate_reply(my_id, &name_clone, &content_clone).await;
                                 
                                 if let Some(reply) = reply_content {
-                                    // Save Bot Reply
                                     let mut conn = get_conn(&state_clone.pool).expect("DB Pool Error");
-                                    let bot_msg = NewMessage {
-                                        sender_id: PUPINN_ID,
-                                        receiver_id: my_id,
-                                        content: reply,
-                                        image_url: None,
-                                    };
                                     
-                                    let saved_bot_msg: Message = diesel::insert_into(messages::table)
-                                        .values(&bot_msg)
-                                        .get_result(&mut conn)
-                                        .expect("Failed to save bot msg");
-                                    
-                                    // Notify User
-                                    let connections = state_clone.chat_state.active_connections.lock().unwrap();
-                                    if let Some(user_tx) = connections.get(&my_id) {
-                                        let message_json = serde_json::json!({
-                                            "id": saved_bot_msg.id,
-                                            "sender_id": saved_bot_msg.sender_id,
-                                            "receiver_id": saved_bot_msg.receiver_id,
-                                            "content": saved_bot_msg.content,
-                                            "image_url": saved_bot_msg.image_url,
-                                            "is_read": saved_bot_msg.is_read,
-                                            "created_at": saved_bot_msg.created_at,
-                                        });
-                                        let _ = user_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
+                                    // Check if the reply contains a BOOKING_PROPOSAL
+                                    if let Some(proposal_start) = reply.find("BOOKING_PROPOSAL:") {
+                                        // Extract the booking proposal JSON
+                                        let proposal_part = &reply[proposal_start..];
+                                        
+                                        // Find the end of the JSON (look for the closing brace)
+                                        if let Some(json_end) = proposal_part.find('}') {
+                                            let booking_proposal = &proposal_part[..=json_end];
+                                            
+                                            // Send the booking proposal as a separate message first
+                                            let proposal_msg = NewMessage {
+                                                sender_id: PUPINN_ID,
+                                                receiver_id: my_id,
+                                                content: booking_proposal.to_string(),
+                                                image_url: None,
+                                            };
+                                            
+                                            if let Ok(saved_proposal_msg) = diesel::insert_into(messages::table)
+                                                .values(&proposal_msg)
+                                                .get_result::<Message>(&mut conn)
+                                            {
+                                                // Notify user about the booking proposal
+                                                let connections = state_clone.chat_state.active_connections.lock().unwrap();
+                                                if let Some(user_tx) = connections.get(&my_id) {
+                                                    let message_json = serde_json::json!({
+                                                        "id": saved_proposal_msg.id,
+                                                        "sender_id": saved_proposal_msg.sender_id,
+                                                        "receiver_id": saved_proposal_msg.receiver_id,
+                                                        "content": saved_proposal_msg.content,
+                                                        "image_url": saved_proposal_msg.image_url,
+                                                        "is_read": saved_proposal_msg.is_read,
+                                                        "created_at": saved_proposal_msg.created_at,
+                                                    });
+                                                    let _ = user_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
+                                                }
+                                                drop(connections);
+                                            }
+                                            
+                                            // Extract the conversational text (everything after the JSON)
+                                            let remaining_text = reply[(proposal_start + json_end + 1)..].trim();
+                                            
+                                            // If there's conversational text, send it as a separate message
+                                            if !remaining_text.is_empty() {
+                                                let text_msg = NewMessage {
+                                                    sender_id: PUPINN_ID,
+                                                    receiver_id: my_id,
+                                                    content: remaining_text.to_string(),
+                                                    image_url: None,
+                                                };
+                                                
+                                                if let Ok(saved_text_msg) = diesel::insert_into(messages::table)
+                                                    .values(&text_msg)
+                                                    .get_result::<Message>(&mut conn)
+                                                {
+                                                    let connections = state_clone.chat_state.active_connections.lock().unwrap();
+                                                    if let Some(user_tx) = connections.get(&my_id) {
+                                                        let message_json = serde_json::json!({
+                                                            "id": saved_text_msg.id,
+                                                            "sender_id": saved_text_msg.sender_id,
+                                                            "receiver_id": saved_text_msg.receiver_id,
+                                                            "content": saved_text_msg.content,
+                                                            "image_url": saved_text_msg.image_url,
+                                                            "is_read": saved_text_msg.is_read,
+                                                            "created_at": saved_text_msg.created_at,
+                                                        });
+                                                        let _ = user_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // No booking proposal, send the reply as normal
+                                        let bot_msg = NewMessage {
+                                            sender_id: PUPINN_ID,
+                                            receiver_id: my_id,
+                                            content: reply,
+                                            image_url: None,
+                                        };
+                                        
+                                        let saved_bot_msg: Message = diesel::insert_into(messages::table)
+                                            .values(&bot_msg)
+                                            .get_result(&mut conn)
+                                            .expect("Failed to save bot msg");
+                                        
+                                        // Notify User
+                                        let connections = state_clone.chat_state.active_connections.lock().unwrap();
+                                        if let Some(user_tx) = connections.get(&my_id) {
+                                            let message_json = serde_json::json!({
+                                                "id": saved_bot_msg.id,
+                                                "sender_id": saved_bot_msg.sender_id,
+                                                "receiver_id": saved_bot_msg.receiver_id,
+                                                "content": saved_bot_msg.content,
+                                                "image_url": saved_bot_msg.image_url,
+                                                "is_read": saved_bot_msg.is_read,
+                                                "created_at": saved_bot_msg.created_at,
+                                            });
+                                            let _ = user_tx.send(serde_json::to_string(&message_json).unwrap_or_default());
+                                        }
                                     }
                                 }
                             });

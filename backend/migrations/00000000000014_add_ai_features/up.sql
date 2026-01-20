@@ -25,6 +25,6 @@ VALUES (
 -- Seed Default Settings
 INSERT INTO system_settings (key, value, description) VALUES
 ('ai_enabled', 'false', 'Master switch for AI chatbot features'),
-('ai_provider', 'openai', 'AI Provider (openai, gemini)'),
+('ai_provider', 'gemini', 'AI Provider (openai, gemini)'),
 ('ai_api_key', '', 'API Key for the AI provider'),
-('ai_model', 'gpt-5-nano', 'Model identifier to use');
+('ai_model', 'gemini-3-flash-preview', 'Model identifier to use');
