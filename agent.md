@@ -27,21 +27,16 @@ The following diagram illustrates the complete AI-powered booking system archite
 flowchart TB
     subgraph Frontend["Frontend Layer"]
         UI["User Chat Interface<br/>(chat-interface.tsx)"]
-        UI_Features["• Sends messages via WebSocket<br/>• Detects BOOKING_PROPOSAL messages<br/>• Renders interactive booking cards"]
     end
     
     subgraph Backend["Backend Layer (Rust/Axum)"]
         WS["WebSocket Chat Handler<br/>(api/chat.rs)"]
-        WS_Features["• Receives user messages<br/>• Detects messages to Pupinn bot<br/>• Calls AI service for responses"]
         
         subgraph AIService["AI Service (services/ai_service.rs)"]
             Agent["Configured AI Agent<br/>(Rig Framework)"]
-            AgentFeatures["• System Preamble<br/>• LLM Client (OpenAI/Gemini)<br/>• Registered Tools"]
             
-            subgraph Tools["Custom Tools"]
-                SearchTool["SearchRoomsTool<br/>• Inputs: check_in, check_out, room_type<br/>• Queries database for availability<br/>• Returns formatted room list"]
-                ProposalTool["CreateBookingProposalTool<br/>• Inputs: room_id, check_in, check_out<br/>• Validates dates and room<br/>• Calculates pricing<br/>• Returns BOOKING_PROPOSAL:{json}"]
-            end
+            SearchTool["SearchRoomsTool<br/>• Inputs: check_in, check_out, room_type<br/>• Queries database for availability<br/>• Returns formatted room list"]
+            ProposalTool["CreateBookingProposalTool<br/>• Inputs: room_id, check_in, check_out<br/>• Validates dates and room<br/>• Calculates pricing<br/>• Returns BOOKING_PROPOSAL:json"]
         end
     end
     
@@ -49,11 +44,12 @@ flowchart TB
         DB[("PostgreSQL Database<br/>• rooms table<br/>• bookings table<br/>• system_settings table")]
     end
     
-    UI --> |WebSocket| WS
-    WS --> |generate_reply()| Agent
-    Agent --> Tools
-    SearchTool --> DB
-    ProposalTool --> DB
+    UI -->|WebSocket| WS
+    WS -->|generate_reply| Agent
+    Agent -->|uses| SearchTool
+    Agent -->|uses| ProposalTool
+    SearchTool -->|queries| DB
+    ProposalTool -->|queries| DB
     
     style UI fill:#3b82f6
     style WS fill:#8b5cf6
