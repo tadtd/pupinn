@@ -121,21 +121,13 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Guest Visits Portal]) --> Search[Search Available Rooms]
-    Search --> Filter["Enter:<br/>- Check-in Date<br/>- Check-out Date<br/>- Room Type"]
-    Filter --> API1[GET /rooms/available]
-    API1 --> BS[BookingService:<br/>check_availability]
-    BS --> DB1[(Database:<br/>Query Available Rooms)]
-    DB1 --> Results[Display Available Rooms]
-    Results --> Select[Select Room]
-    Select --> Confirm[Review Booking Details]
-    Confirm --> API2[POST /guest/bookings]
-    API2 --> Validate{Validate Dates<br/>& Availability}
-    Validate -->|Invalid| Error[Show Error]
-    Validate -->|Valid| Create[BookingService:<br/>create_booking]
-    Create --> DB2[(Database:<br/>INSERT Booking)]
-    DB2 --> UpdateRoom["Update Room Status<br/>to 'occupied'"]
-    UpdateRoom --> Success[Redirect to My Bookings]
+    Start([Guest Visits Portal]) --> Search["Search Rooms<br/>(Dates + Type)"]
+    Search --> Results[Display Available Rooms]
+    Results --> Select[Select & Confirm]
+    Select --> Validate{Valid?}
+    Validate -->|No| Error[Show Error]
+    Validate -->|Yes| Create[Create Booking]
+    Create --> Success["Update Room to 'occupied'<br/>Redirect to My Bookings"]
     Error --> Results
     
     style Start fill:#3b82f6
@@ -147,26 +139,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([Staff Creates Booking]) --> Input["Enter Guest Info:<br/>- Name<br/>- Email<br/>- Phone<br/>- ID Number"]
-    Input --> SelectRoom[Select Room & Dates]
-    SelectRoom --> API[POST /bookings]
-    API --> Auth{Staff Has<br/>Permission?}
-    Auth -->|No| Denied[401 Unauthorized]
-    Auth -->|Yes| Validate{Validate Dates<br/>& Availability}
-    Validate -->|Invalid| Error[Show Error Message]
-    Validate -->|Valid| Create[BookingService:<br/>create_booking]
-    Create --> DB1[(Database:<br/>INSERT Booking)]
-    DB1 --> GuestCheck{Guest Account<br/>Exists?}
-    GuestCheck -->|No| CreateGuest[Create Guest Account]
-    GuestCheck -->|Yes| LinkGuest[Link to Existing Guest]
-    CreateGuest --> UpdateRoom
-    LinkGuest --> UpdateRoom["Update Room Status<br/>to 'occupied'"]
-    UpdateRoom --> Notify[Show Success Message]
-    Error --> SelectRoom
+    Start([Staff Creates Booking]) --> Input["Enter Guest Info<br/>& Select Room"]
+    Input --> Validate{Valid &<br/>Authorized?}
+    Validate -->|No| Error[Show Error]
+    Validate -->|Yes| Create[Create Booking]
+    Create --> Guest{Guest Exists?}
+    Guest -->|No| NewGuest[Create Guest Account]
+    Guest -->|Yes| Link[Link to Guest]
+    NewGuest --> Success
+    Link --> Success["Update Room<br/>Show Success"]
+    Error --> Input
     
     style Start fill:#8b5cf6
-    style Notify fill:#10b981
-    style Denied fill:#ef4444
+    style Success fill:#10b981
     style Error fill:#ef4444
 ```
 
@@ -316,108 +301,91 @@ flowchart TB
 
 ## Real-time Chat System
 
-### WebSocket Connection & Messaging Flow
+### WebSocket Connection & Basic Messaging
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant F as Frontend
     participant WS as WebSocket Handler
-    participant State as ChatState (In-Memory)
-    participant AI as AI Service
+    participant State as ChatState
     participant DB as Database
     
     Note over U,State: Connection Setup
     U->>F: Open chat interface
-    F->>WS: WebSocket connection request
-    WS->>WS: Extract JWT from query param
-    WS->>WS: Verify & decode JWT
-    WS->>State: Register connection (user_id → socket)
-    State-->>WS: Connection registered
-    WS-->>F: WebSocket connected
+    F->>WS: WebSocket connection + JWT
+    WS->>WS: Verify JWT
+    WS->>State: Register (user_id → socket)
+    WS-->>F: Connected
     
-    Note over U,DB: Send Message Flow
-    U->>F: Type message & send
+    Note over U,DB: Send Message
+    U->>F: Type & send message
     F->>WS: WebSocket: text message
-    WS->>DB: INSERT message (sender, receiver, content)
-    DB-->>WS: Message saved
-    WS->>State: Get receiver's active connection
+    WS->>DB: Save message
+    WS->>State: Lookup receiver
     
-    alt Receiver is online
-        State-->>WS: Return receiver socket
-        WS->>F: Forward message to receiver (WebSocket)
-    else Receiver is offline
-        State-->>WS: No active connection
-        Note over WS: Message only stored in DB
+    alt Receiver Online
+        State-->>WS: Return socket
+        WS->>F: Forward to receiver
+    else Receiver Offline
+        Note over WS: Message stored only
     end
+```
+
+### AI Bot & Image Upload Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant WS as WebSocket Handler
+    participant AI as AI Service
+    participant Storage as MinIO
+    participant DB as Database
     
-    Note over U,AI: AI Bot Message Flow
-    U->>F: Send message to Pupinn bot
-    F->>WS: WebSocket: message to bot_id
+    Note over U,AI: AI Bot Interaction
+    U->>F: Message to Pupinn bot
+    F->>WS: WebSocket: bot message
     WS->>DB: Save user message
-    WS->>AI: generate_reply(message, user_id)
-    
-    par Async AI Processing
-        AI->>AI: Process with agent & tools
-        AI-->>WS: AI response
-    end
-    
+    WS->>AI: generate_reply(message)
+    AI->>AI: Process with tools
+    AI-->>WS: AI response
     WS->>DB: Save AI message
-    WS->>F: Send AI response via WebSocket
-    F->>U: Display AI message/booking card
+    WS->>F: Send response
+    F->>U: Display AI message
     
-    Note over U,State: Image Upload in Chat
-    U->>F: Select image to send
-    F->>WS: HTTP POST /api/chat/upload (multipart)
-    WS->>WS: Validate image (size, type)
+    Note over U,Storage: Image Upload
+    U->>F: Select image
+    F->>WS: POST /api/chat/upload
     WS->>Storage: Upload to MinIO
     Storage-->>WS: Image URL
-    WS->>DB: INSERT message with image_url
-    WS->>State: Get receiver socket
-    State-->>WS: Receiver socket
-    WS->>F: Forward message with image
+    WS->>DB: Save message with URL
+    WS->>F: Forward image message
+    F->>U: Display image
 ```
 
 ### Chat State Management
 
 ```mermaid
 flowchart TD
-    Start([WebSocket Connection]) --> Auth{JWT Valid?}
-    Auth -->|No| Reject[Close WebSocket]
-    Auth -->|Yes| Extract[Extract user_id from JWT]
-    Extract --> Register["Register in ChatState<br/>HashMap(user_id → WebSocketSender)"]
-    Register --> Listen[Listen for Messages]
+    Start([Connection]) --> Auth{JWT Valid?}
+    Auth -->|No| Reject[Close]
+    Auth -->|Yes| Register["Register in ChatState<br/>(user_id → socket)"]
+    Register --> Listen[Listen]
     
-    Listen --> MsgType{Message Type?}
+    Listen --> Route{Message To?}
+    Route -->|Bot| AI[AI Service]
+    Route -->|User| Forward[Forward if Online]
     
-    MsgType -->|Text Message| Save1[Save to Database]
-    MsgType -->|Image Upload| Upload[Upload to MinIO]
+    AI --> Listen
+    Forward --> Listen
     
-    Save1 --> CheckBot{Receiver is<br/>Pupinn Bot?}
-    Upload --> Save2[Save message with image_url]
-    Save2 --> CheckBot
-    
-    CheckBot -->|Yes| CallAI[Call AI Service]
-    CheckBot -->|No| Lookup[Lookup receiver in ChatState]
-    
-    CallAI --> AIResp[Get AI Response]
-    AIResp --> SaveAI[Save AI message to DB]
-    SaveAI --> Forward1[Send to user via WebSocket]
-    
-    Lookup --> Online{Receiver<br/>Online?}
-    Online -->|Yes| Forward2[Forward via WebSocket]
-    Online -->|No| Skip[Message stored, no forward]
-    
-    Forward1 --> Listen
-    Forward2 --> Listen
-    Skip --> Listen
-    
-    Listen --> Disconnect{Connection<br/>Closed?}
-    Disconnect -->|Yes| Cleanup[Remove from ChatState]
+    Listen --> Disconnect{Closed?}
+    Disconnect -->|Yes| Cleanup[Remove]
     Disconnect -->|No| Listen
     
     style Start fill:#3b82f6
-    style CallAI fill:#8b5cf6
+    style AI fill:#8b5cf6
     style Cleanup fill:#ef4444
     style Reject fill:#ef4444
 ```
@@ -503,38 +471,23 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start([Process Payment]) --> Input["Enter Payment Details:<br/>- Booking Reference<br/>- Amount<br/>- Payment Type<br/>- Payment Method<br/>- Notes"]
+    Start([Process Payment]) --> Input["Enter Details<br/>(Booking, Amount, Type)"]
+    Input --> Validate{Valid &<br/>Authorized?}
     
-    Input --> API[POST /payments]
-    API --> Auth{Staff Has<br/>Permission?}
-    Auth -->|No| Denied[401 Unauthorized]
-    Auth -->|Yes| Validate{Validate<br/>Payment?}
+    Validate -->|No| Error[Show Error]
+    Validate -->|Yes| Create[Create Payment]
     
-    Validate -->|Booking Not Found| Error1[404 Not Found]
-    Validate -->|Invalid Amount| Error2[400 Bad Request]
-    Validate -->|Valid| Create[PaymentService:<br/>create_payment]
+    Create --> Check{Full Payment?}
+    Check -->|Yes| Paid["Status: 'paid'"]
+    Check -->|No| Partial["Status: 'partial'"]
     
-    Create --> DB1[(Database:<br/>INSERT Payment)]
-    DB1 --> CalcTotal[Calculate Total Paid]
-    CalcTotal --> CheckFull{Full Payment?}
-    
-    CheckFull -->|Yes| UpdateStatus[Update Booking:<br/>payment_status='paid']
-    CheckFull -->|No| PartialStatus[Update Booking:<br/>payment_status='partial']
-    
-    UpdateStatus --> Success[Return Payment Record]
-    PartialStatus --> Success
-    Success --> Notify[Show Success Message]
-    
-    Error1 --> End([End])
-    Error2 --> End
-    Denied --> End
+    Paid --> Success[Show Success]
+    Partial --> Success
+    Error --> End([End])
     
     style Start fill:#8b5cf6
     style Success fill:#10b981
-    style Notify fill:#10b981
-    style Denied fill:#ef4444
-    style Error1 fill:#ef4444
-    style Error2 fill:#ef4444
+    style Error fill:#ef4444
 ```
 
 ### Payment Types & Amounts
