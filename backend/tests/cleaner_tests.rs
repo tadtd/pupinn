@@ -1,4 +1,6 @@
 //! Tests for cleaner role access control and status restrictions
+//!
+//! These tests are DB-free and only exercise pure helper functions / enums.
 
 use hotel_management_backend::api::middleware::is_staff_role;
 use hotel_management_backend::models::{RoomStatus, UserRole};
@@ -71,5 +73,3 @@ mod cleaner_status_permission_tests {
         );
     }
 }
-
-

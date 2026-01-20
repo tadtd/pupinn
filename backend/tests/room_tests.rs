@@ -109,6 +109,7 @@ mod room_status_transition_tests {
 
 mod room_type_tests {
     use hotel_management_backend::models::RoomType;
+    use serde_json;
 
     #[test]
     fn test_room_type_serialization() {
@@ -139,6 +140,7 @@ mod room_type_tests {
 
 mod room_status_serialization_tests {
     use hotel_management_backend::models::RoomStatus;
+    use serde_json;
 
     #[test]
     fn test_room_status_serialization() {

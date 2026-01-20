@@ -1,21 +1,39 @@
-//! Unit tests for BookingService
+//! Unit tests for BookingService (DB-free)
 //!
-//! These tests verify booking-related business logic.
-//! Tests that require database are marked and would run against a test database.
+//! Đây là phiên bản đầy đủ của bộ test booking, giữ lại mọi trường hợp kiểm thử
+//! từ file gốc nhưng chuyển chúng thành các kiểm tra thuần logic (không cần DB),
+//! bằng cách dùng helper ngày và kiểm tra enum / hàm thuần.
 
 use chrono::{NaiveDate, Utc};
+use regex::Regex;
+
+use hotel_management_backend::models::{BookingStatus, RoomStatus};
+
+/// Helper để lấy ngày hiện tại (naive)
+fn today() -> NaiveDate {
+    Utc::now().date_naive()
+}
+
+/// Helper để lấy ngày cách ngày hiện tại `days` ngày (dương => tương lai, âm => quá khứ)
+fn days_from_now(days: i64) -> NaiveDate {
+    today() + chrono::Duration::days(days)
+}
+
+// ============================================================================
+// DATE VALIDATION
+// ============================================================================
 
 mod date_validation_tests {
     use super::*;
 
-    /// Helper to get today's date
+    /// Helper to get today's date (re-exported here for clarity)
     fn today() -> NaiveDate {
-        Utc::now().date_naive()
+        super::today()
     }
 
     /// Helper to get a future date
     fn days_from_now(days: i64) -> NaiveDate {
-        today() + chrono::Duration::days(days)
+        super::days_from_now(days)
     }
 
     #[test]
@@ -93,6 +111,10 @@ mod date_validation_tests {
     }
 }
 
+// ============================================================================
+// AVAILABILITY CHECKS
+// ============================================================================
+
 mod availability_check_tests {
     use super::*;
 
@@ -119,7 +141,7 @@ mod availability_check_tests {
     }
 
     fn days_from_now(days: i64) -> NaiveDate {
-        Utc::now().date_naive() + chrono::Duration::days(days)
+        super::days_from_now(days)
     }
 
     #[test]
@@ -242,8 +264,12 @@ mod availability_check_tests {
     }
 }
 
+// ============================================================================
+// BOOKING REFERENCE / IDENTIFIERS
+// ============================================================================
+
 mod booking_reference_tests {
-    use regex::Regex;
+    use super::*;
 
     #[test]
     fn test_reference_format_pattern() {
@@ -312,8 +338,12 @@ mod booking_reference_tests {
     }
 }
 
+// ============================================================================
+// BOOKING STATUS / STATE MACHINE
+// ============================================================================
+
 mod booking_status_tests {
-    use hotel_management_backend::models::BookingStatus;
+    use super::*;
 
     #[test]
     fn test_upcoming_can_transition_to_checked_in() {
@@ -372,8 +402,12 @@ mod booking_status_tests {
     }
 }
 
+// ============================================================================
+// CHECKOUT ROOM STATUS BEHAVIOUR
+// ============================================================================
+
 mod checkout_room_status_tests {
-    use hotel_management_backend::models::RoomStatus;
+    use super::*;
 
     #[test]
     fn checkout_should_allow_occupied_to_dirty_transition() {
@@ -398,4 +432,3 @@ mod checkout_room_status_tests {
         );
     }
 }
-
